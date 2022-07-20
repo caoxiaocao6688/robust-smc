@@ -174,8 +174,8 @@ class ConstantVelocityModel:
         self.seed = seed
         self.rng = np.random.RandomState(seed)
         self.contamination_probability = contamination_probability
-        self._build_system()
-        self._simulate_system()
+        self._build_system() # 生成系统参数
+        self._simulate_system() # 仿真系统，得到观测数据
 
     def _build_system(self):
         self.dim_X = 4

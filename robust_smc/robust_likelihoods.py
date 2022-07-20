@@ -20,14 +20,15 @@ class BetaRobustLikelihood(ABC):
 
     def log_likelihood(self, y, *args, **kwargs):
         lik = self.annealed_term(y, *args, **kwargs) / self.beta
-        integral_term = self.integral_term(y, *args, **kwargs) / (1 / (1 + self.beta))
+        # integral_term = self.integral_term(y, *args, **kwargs) / (1 / (1 + self.beta))
+        integral_term = self.integral_term(y, *args, **kwargs) / (1 + self.beta)
         integral_term = np.broadcast_to(integral_term, lik.shape)
         lik -= integral_term
         return lik
 
 
 class BetaRobustGaussian(BetaRobustLikelihood):
-    def __init__(self, beta, compute_integral_term=False):
+    def __init__(self, beta, compute_integral_term=True): # TODO
         super().__init__(norm, beta)
         self.compute_integral_term = compute_integral_term
 
@@ -35,7 +36,8 @@ class BetaRobustGaussian(BetaRobustLikelihood):
         integral = 0.0
         if self.compute_integral_term:
             sigma_squared = kwargs['scale'] ** 2
-            integral += ((self.beta + 1) * (2 * np.pi * sigma_squared)) ** (-self.beta / 2)  # D
+            # integral += ((self.beta + 1) * (2 * np.pi * sigma_squared)) ** (-self.beta / 2)  # D
+            integral += (self.beta + 1)**(-1 / 2)*(2 * np.pi * sigma_squared) ** (-self.beta / 2)  # D
             integral = np.prod(integral)
         return integral
 

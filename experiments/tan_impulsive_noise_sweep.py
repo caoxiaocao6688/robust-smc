@@ -138,8 +138,8 @@ def run(runs, contamination):
 if __name__ == '__main__':
     for contamination in CONTAMINATION:
         results, predictive_results = run(NUM_RUNS, contamination)
-        pickle_save(f'./results/tan/impulsive_noise_with_student_t/beta-sweep-contamination-{contamination}.pk', results)
+        pickle_save(f'../results/tan/impulsive_noise_with_student_t/beta-sweep-contamination-{contamination}.pk', results)
         pickle_save(
-            f'./results/tan/impulsive_noise_with_student_t/beta-predictive-sweep-contamination-{contamination}.pk',
+            f'../results/tan/impulsive_noise_with_student_t/beta-predictive-sweep-contamination-{contamination}.pk',
             predictive_results
         )

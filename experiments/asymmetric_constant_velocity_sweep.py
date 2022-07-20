@@ -143,4 +143,4 @@ def run(runs):
 
 if __name__ == '__main__':
     results = run(NUM_RUNS)
-    pickle_save(f'./results/constant-velocity/asymmetric_noise/student_t_comparison.pk', results)
+    pickle_save(f'../results/constant-velocity/asymmetric_noise/student_t_comparison.pk', results)
