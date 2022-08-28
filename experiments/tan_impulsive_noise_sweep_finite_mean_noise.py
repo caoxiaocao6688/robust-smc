@@ -20,9 +20,9 @@ CONTAMINATION = [0.1]
 
 # Sampler Settings
 NUM_LATENT = 6
-NUM_SAMPLES = 1000
+NUM_SAMPLES = 10
 NOISE_STD = 20.0
-FINAL_TIME = 1000
+FINAL_TIME = 10
 TIME_STEP = 0.5
 
 # RNG
@@ -142,8 +142,8 @@ def run(runs, contamination):
 if __name__ == '__main__':
     for contamination in CONTAMINATION:
         results, predictive_results = run(NUM_RUNS, contamination)
-        pickle_save(f'./results/tan/impulsive_noise_with_finite_mean/beta-sweep-contamination-{contamination}.pk', results)
+        pickle_save(f'../results/tan/impulsive_noise_with_finite_mean/beta-sweep-contamination-{contamination}.pk', results)
         pickle_save(
-            f'./results/tan/impulsive_noise_with_finite_mean/beta-predictive-sweep-contamination-{contamination}.pk',
+            f'../results/tan/impulsive_noise_with_finite_mean/beta-predictive-sweep-contamination-{contamination}.pk',
             predictive_results
         )

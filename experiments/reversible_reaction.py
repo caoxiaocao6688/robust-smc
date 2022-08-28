@@ -1,6 +1,6 @@
 import numpy as np
 
-from robust_smc.data import ExplosiveTANSimulator
+from robust_smc.data import ReversibleReaction
 from robust_smc.nonlinearmhe import NonlinearMhe
 from robust_smc.ukf import UKF
 from robust_smc.robustnonlinearmhe import RobustifiedNonlinearMhe
@@ -14,17 +14,16 @@ from experiment_utilities import pickle_save
 # Experiment Settings
 SIMULATOR_SEED = 1992
 RNG_SEED = 24
-NUM_RUNS = 2
+NUM_RUNS = 20
 # BETA = [1e-5, 2e-5, 4e-5, 5e-5, 6e-5, 8e-5, 1e-4]
 BETA = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5, 0.8]
 
-# CONTAMINATION = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
-CONTAMINATION = [0.0]
+CONTAMINATION = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
 
 # Sampler Settings
-NUM_LATENT = 6
+NUM_LATENT = 2
 NUM_SAMPLES = 1000
-NOISE_STD = 20.0
+NOISE_STD = 0.1
 FINAL_TIME = 10
 TIME_STEP = 0.1
 
@@ -40,20 +39,20 @@ def experiment_step(simulator):
     observation_cov = simulator.observation_std ** 2
 
     # BPF sampler
-    prior_std = np.array([1e-1, 1e-1, 1.0, 1e-2, 1e-2, 1e-1])
-    X_init = simulator.X0[None, :] + prior_std[None, :] * RNG.randn(NUM_SAMPLES, NUM_LATENT)
-    X_init = X_init.squeeze()
-    vanilla_bpf = LinearGaussianBPF(
-        data=Y,
-        transition_matrix=simulator.transition_matrix,
-        observation_model=simulator.observation_model,
-        transition_cov=transition_cov,
-        observation_cov=observation_cov,
-        X_init=X_init,
-        num_samples=NUM_SAMPLES,
-        seed=seed
-    )
-    vanilla_bpf.sample()
+    prior_std = np.array([1, 1])
+    # X_init = np.array([[0.1, 4.5]]) + prior_std[None, :] * RNG.randn(NUM_SAMPLES, NUM_LATENT)
+    # X_init = X_init.squeeze()
+    # vanilla_bpf = LinearGaussianBPF(
+    #     data=Y,
+    #     transition_matrix=simulator.transition_matrix,
+    #     observation_model=simulator.observation_model,
+    #     transition_cov=transition_cov,
+    #     observation_cov=observation_cov,
+    #     X_init=X_init,
+    #     num_samples=NUM_SAMPLES,
+    #     seed=seed
+    # )
+    # vanilla_bpf.sample()
 
     # UKF
     ukf = UKF(
@@ -61,7 +60,7 @@ def experiment_step(simulator):
         transition_matrix=simulator.transition_matrix,
         transition_cov=transition_cov,
         observation_cov=observation_cov,
-        m_0=simulator.X0*1.1,
+        m_0=np.array([0.1, 4.5]),
         P_0=np.diag(prior_std)**2
     )
     ukf.filter()
@@ -70,10 +69,9 @@ def experiment_step(simulator):
     mhe = NonlinearMhe(
         data=Y,
         transition_matrix=simulator.transition_matrix,
-        observation_model=simulator.observation_model,
         transition_cov=transition_cov,
         observation_cov=observation_cov,
-        m_0=simulator.X0*1.1,
+        m_0=np.array([0.1, 4.5]),
         P_0=np.diag(prior_std)**2
     )
     mhe.filter()
@@ -85,16 +83,15 @@ def experiment_step(simulator):
             data=Y,
             beta=b,
             transition_matrix=simulator.transition_matrix,
-            observation_model=simulator.observation_model,
             transition_cov=transition_cov,
             observation_cov=observation_cov,
-            m_0=simulator.X0*1.1,
+            m_0=np.array([0.1, 4.5]),
             P_0=np.diag(prior_std)**2
         )
         robust_mhe.filter()
         robust_mhes.append(robust_mhe)
 
-    return simulator, ukf, mhe, robust_mhes, vanilla_bpf
+    return simulator, ukf, mhe, robust_mhes
 
 
 def compute_mse_and_coverage(simulator, sampler):
@@ -157,7 +154,7 @@ def compute_mse_and_coverage(simulator, sampler):
 def run(runs, contamination):
     process_std = None
 
-    simulator = ExplosiveTANSimulator(
+    simulator = ReversibleReaction(
         final_time=FINAL_TIME,
         time_step=TIME_STEP,
         observation_std=NOISE_STD,
@@ -165,18 +162,17 @@ def run(runs, contamination):
         contamination_probability=contamination,
         seed=SIMULATOR_SEED
     )
-    ukf_data, mhe_data, robust_mhe_data, vanilla_bpf_data = [], [], [], []
+    ukf_data, mhe_data, robust_mhe_data = [], [], []
     for _ in trange(runs):
-        simulator, ukf, mhe, robust_mhes, vanilla_bpf = experiment_step(simulator)
+        simulator, ukf, mhe, robust_mhes = experiment_step(simulator)
         ukf_data.append(compute_mse_and_coverage(simulator, ukf))
         mhe_data.append(compute_mse_and_coverage(simulator, mhe))
         robust_mhe_data.append([compute_mse_and_coverage(simulator, robust_mhe) for robust_mhe in robust_mhes])
-        vanilla_bpf_data.append(compute_mse_and_coverage(simulator, vanilla_bpf))
-    return np.array(ukf_data), np.array(mhe_data), np.array(robust_mhe_data), np.array(vanilla_bpf_data)
+    return np.array(ukf_data), np.array(mhe_data), np.array(robust_mhe_data)
 
 
 if __name__ == '__main__':
     for contamination in CONTAMINATION:
         print('CONTAMINATION=', contamination)
         results = run(NUM_RUNS, contamination)
-        pickle_save(f'../results/tan/impulsive_noise_with_student_t/beta-sweep-contamination-{contamination}.pk', results)
+        pickle_save(f'../results/reversible_reaction/impulsive_noise_with_student_t/beta-sweep-contamination-{contamination}.pk', results)

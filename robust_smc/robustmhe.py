@@ -2,10 +2,11 @@ import numpy as np
 import casadi as ca
 
 
-class Mhe:
-    def __init__(self, data, transition_matrix, transition_cov, observation_matrix, observation_cov, m_0, P_0):
+class RobustifiedMhe:
+    def __init__(self, data, beta, transition_matrix, transition_cov, observation_matrix, observation_cov, m_0, P_0):
 
         self.data = data
+        self.beta = beta
         self.transition_matrix = transition_matrix
         self.transition_cov = transition_cov
         self.observation_matrix = observation_matrix
@@ -60,8 +61,9 @@ class Mhe:
 
             else:
                 y_seq[0:self.slide_window - 1] = y_seq[1:self.slide_window]
-                y_seq[self.slide_window-1] = y
-                sol = self.casadi_mhe(self.filter_means[t - self.slide_window+1], self.filter_covs[t - self.slide_window+1],
+                y_seq[self.slide_window - 1] = y
+                sol = self.casadi_mhe(self.filter_means[t - self.slide_window + 1],
+                                      self.filter_covs[t - self.slide_window + 1],
                                       y_seq,
                                       slide_window=self.slide_window)
                 sol = np.array(sol.full())
@@ -96,15 +98,20 @@ class Mhe:
         ca_h = ca.Function('h', [ca_x], [ca_RHS])
 
         ca_x_hat = ca_x_hat0
-        ca_cost_fn = (ca_x_hat - ca_x_bar0).T @ ca_P0_inv @ (ca_x_hat - ca_x_bar0)  # cost function
+        ca_cost_fn = 0.5*(ca_x_hat - ca_x_bar0).T @ ca_P0_inv @ (ca_x_hat - ca_x_bar0)  # cost function
 
         for k in range(slide_window):
             ca_xi = ca_Xi[:, k]
             ca_y = ca_Y[:, k]
             ca_x_hat = ca_f(ca_x_hat, ca_xi)
+            # ca_cost_fn = ca_cost_fn \
+            #              + 1 / ((self.beta + 1)**1.5*(2*np.pi)**(self.y_dim*self.beta/2))\
+            #              -1 / self.beta * (1 / ((2 * np.pi) ** (self.y_dim/2)) * ca.exp(-0.5*(ca_y-ca_h(ca_x_hat)).T @ ca_R_inv @ (ca_y-ca_h(ca_x_hat))))**self.beta \
+            #              + 0.5*ca_xi.T @ ca_Q_inv @ ca_xi
             ca_cost_fn = ca_cost_fn \
-                         + (ca_y - ca_h(ca_x_hat)).T @ ca_R_inv @ (ca_y - ca_h(ca_x_hat)) \
-                         + ca_xi.T @ ca_Q_inv @ ca_xi
+                         + 1 / ((self.beta + 1)**1.5*(2*np.pi)**(self.y_dim*self.beta/2))\
+                         -(1 / self.beta) * 1 / ((2 * np.pi) ** (self.beta*self.y_dim/2)) * ca.exp(-0.5*self.beta*(ca_y-ca_h(ca_x_hat)).T @ ca_R_inv @ (ca_y-ca_h(ca_x_hat))) \
+                         + 0.5*ca_xi.T @ ca_Q_inv @ ca_xi
 
         # 自变量设置
         ca_OPT_variables = ca.vertcat(
