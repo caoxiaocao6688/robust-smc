@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 
 from robust_smc.data import ConstantVelocityModel
@@ -16,15 +18,15 @@ from experiment_utilities import pickle_save
 # Experiment Settings
 SIMULATOR_SEED = 1400
 RNG_SEED = 1218
-NUM_RUNS = 10
+NUM_RUNS = 2
 BETA = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5, 0.8]
-CONTAMINATION = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
-
+# CONTAMINATION = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+CONTAMINATION = [0.2]
 # Sampler Settings
 NUM_LATENT = 4
 NUM_SAMPLES = 100
 NOISE_VAR = 1.0
-FINAL_TIME = 10
+FINAL_TIME = 100
 TIME_STEP = 0.1
 EXPLOSION_SCALE = 100.0
 
@@ -44,8 +46,9 @@ def experiment_step(simulator):
         m_0=np.zeros((NUM_LATENT, 1)),
         P_0=simulator.initial_cov
     )
+    # a = time.time()
     kalman.filter()
-
+    # print('KF time', (time.time()-a)/1000)
     # MHE
     mhe = Mhe(
         data=Y,
@@ -56,22 +59,26 @@ def experiment_step(simulator):
         m_0=np.zeros((NUM_LATENT, 1)),
         P_0=simulator.initial_cov
     )
+    # a = time.time()
     mhe.filter()
+    # print('MHE time', (time.time()-a)/1000)
 
     # beta-MHE
     robust_mhes = []
     for b in BETA:
         robust_mhe = RobustifiedMhe(
-        data=Y,
-        beta = b,
-        transition_matrix=simulator.transition_matrix,
-        observation_matrix=simulator.observation_matrix,
-        transition_cov=simulator.process_cov,
-        observation_cov=simulator.observation_cov,
-        m_0=np.zeros((NUM_LATENT, 1)),
-        P_0=simulator.initial_cov
-    )
+            data=Y,
+            beta=b,
+            transition_matrix=simulator.transition_matrix,
+            observation_matrix=simulator.observation_matrix,
+            transition_cov=simulator.process_cov,
+            observation_cov=simulator.observation_cov,
+            m_0=np.zeros((NUM_LATENT, 1)),
+            P_0=simulator.initial_cov
+        )
+        # a = time.time()
         robust_mhe.filter()
+        # print('ROBUST MHE time', (time.time() - a) / 1000)
         robust_mhes.append(robust_mhe)
 
     # # BPF Sampler
@@ -191,8 +198,32 @@ def run(runs, contamination):
     return np.array(kalman_data), np.array(mhe_data), np.array(robust_mhe_data)
 
 
+def run2(runs, contamination, simulator=None):
+    observation_cov = NOISE_VAR * np.eye(2)
+    simulator = ConstantVelocityModel(
+        final_time=FINAL_TIME,
+        time_step=TIME_STEP,
+        observation_cov=observation_cov,
+        explosion_scale=EXPLOSION_SCALE,
+        contamination_probability=contamination,
+        seed=SIMULATOR_SEED
+    )  # simulator代表真实系统
+    robust_mhe_error_list, kf_error_list, mhe_error_list = [], [], []
+    for _ in trange(runs):
+        simulator, kalman, mhe, robust_mhes = experiment_step(simulator)
+        kf_error = simulator.X - np.squeeze(np.array(kalman.filter_means), axis=2)
+        mhe_error = simulator.X - np.squeeze(np.array(mhe.filter_means), axis=2)
+        robust_mhes_error = simulator.X - [np.squeeze(np.array(robust_mhe.filter_means), axis=2) for robust_mhe in robust_mhes]
+        kf_error_list.append(kf_error)
+        robust_mhe_error_list.append(robust_mhes_error)
+        mhe_error_list.append(mhe_error)
+    return np.array(kf_error_list), np.array(mhe_error_list), np.array(robust_mhe_error_list)
+
+
 if __name__ == '__main__':
     for contamination in CONTAMINATION:
-        results = run(NUM_RUNS, contamination)
-        pickle_save(f'../results/constant-velocity/impulsive_noise/beta-sweep-contamination-{contamination}.pk',
-                    results) # TODO
+        results = run2(NUM_RUNS, contamination)
+        print(results)
+        pickle_save(
+            f'../results/constant-velocity/impulsive_noise/original_data/beta-sweep-contamination-{contamination}.pk',
+            results)  # TODO

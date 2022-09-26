@@ -26,7 +26,7 @@ FINAL_TIME = 10
 TIME_STEP = 0.1
 # BETA = [1e-5, 2e-5, 4e-5, 5e-5, 6e-5, 8e-5, 1e-4]
 BETA = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5, 0.8]
-CONTAMINATION = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+CONTAMINATION = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
 
 LABELS = np.array(['UKF'] + ['MHE'] + [r'$\beta$ = {}'.format(b) for b in BETA])
 TITLES = [
@@ -134,7 +134,7 @@ def plot_metrics(results_path, figsize, save_path=None):
         plt.savefig(save_file, bbox_inches='tight')
 
 
-def plot_aggregate_latent(results_path, figsize, save_path=None):
+def plot_aggregate_latent1(results_path, figsize, save_path=None):
     selected_models = [0, 1, 2, 3, 4, 5]
     colors = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6']
 
@@ -220,6 +220,69 @@ def plot_aggregate_latent(results_path, figsize, save_path=None):
     axes[-1].legend(handles=bplot['boxes'], loc='center', bbox_to_anchor=(0.5, -0.4), frameon=False, ncol=6)
     if save_path:
         save_file = os.path.join(save_path, f'aggregate_plot.pdf')
+        plt.savefig(save_file, bbox_inches='tight')
+
+
+def plot_aggregate_latent(results_path, figsize, save_path=None):
+    selected_models = [0, 1, 4, 5, 6, 7]
+    colors = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6']
+
+    labels = LABELS[selected_models]
+    positions = np.arange(1, len(selected_models) + 1)
+
+    fig = plt.figure(figsize=figsize, dpi=300)
+
+    for metric in (['mse']):
+        if metric == 'mse':
+            metric_idx = 0
+            label = 'NMSE'
+            scale = 'log'
+
+        plot_data = []
+        for contamination in CONTAMINATION:
+
+            simulator = ReversibleReaction(
+                final_time=FINAL_TIME,
+                time_step=TIME_STEP,
+                observation_std=NOISE_STD,
+                process_std=None,
+                contamination_probability=contamination,
+                seed=SIMULATOR_SEED
+            )
+
+            if metric == 'mse':
+                normaliser = (np.sum(simulator.X ** 2, axis=0) / simulator.X.shape[0])[None, :]
+
+            results_file = os.path.join(results_path, f'beta-sweep-contamination-{contamination}.pk')
+            ukf_data, mhe_data, robust_mhe_data = pickle_load(results_file)
+            concatenated_data = np.concatenate([
+                ukf_data[:, None, :, metric_idx],
+                mhe_data[:, None, :, metric_idx],
+                robust_mhe_data[:, :, :, metric_idx],
+            ], axis=1)
+            concatenated_data = concatenated_data / normaliser  # contamination x N x models x num_latent
+            plot_data.append(concatenated_data)
+
+        plot_data = np.stack(plot_data).mean(axis=-1)[:, :, :]
+
+        plt.yscale(scale)
+        for i in range(len(CONTAMINATION)):
+            bplot = plt.boxplot(plot_data[i, :, selected_models].T, positions=(i * 7) + positions,
+                               sym='x', patch_artist=True, manage_ticks=False,
+                               widths=0.6, flierprops={'markersize': 4}, showfliers=False)
+            for box, m, color, l in zip(bplot['boxes'], bplot['medians'], colors, labels):
+                box.set_facecolor(color)
+                box.set_label(l)
+                m.set_color('k')
+        plt.yticks(fontsize=20)
+        plt.xticks(ticks=np.arange(2.5, 2.5 + 7 * len(CONTAMINATION), 7), labels=CONTAMINATION, fontsize=20)
+        plt.ylabel(label, fontsize=20)
+        plt.grid(axis='y')
+
+    plt.xlabel(r'Contamination probability $p_c$', fontsize=20)
+    plt.legend(handles=bplot['boxes'], loc='center', bbox_to_anchor=(0.5, -0.4), frameon=False, ncol=2, fontsize=20)
+    if save_path:
+        save_file = os.path.join(save_path, f'Reactor Model.pdf')
         plt.savefig(save_file, bbox_inches='tight')
 
 

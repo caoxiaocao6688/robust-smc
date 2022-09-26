@@ -18,8 +18,8 @@ NUM_RUNS = 20
 # BETA = [1e-5, 2e-5, 4e-5, 5e-5, 6e-5, 8e-5, 1e-4]
 BETA = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5, 0.8]
 
-CONTAMINATION = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
-
+# CONTAMINATION = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+CONTAMINATION = [0.25, 0.3]
 # Sampler Settings
 NUM_LATENT = 2
 NUM_SAMPLES = 1000

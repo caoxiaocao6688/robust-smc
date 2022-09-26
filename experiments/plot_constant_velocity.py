@@ -344,8 +344,7 @@ NUM_LATENT = 4
 #         plt.savefig(save_path, bbox_inches='tight')
 
 
-def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
-
+def aggregate_box_plot1(contamination, results_file, figsize, save_path=None):
     # predictive_scores = pickle_load(
     #     f'../results/constant-velocity/impulsive_noise_predictive/beta-sweep-contamination-{contamination}.pk'
     # )
@@ -381,8 +380,8 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
         )
 
         if metric == 'mse':
-            # normaliser = (np.sum(simulator.X ** 2, axis=0) / simulator.X.shape[0])[None, :]
-            normaliser = np.ones((1, NUM_LATENT))
+            normaliser = (np.sum(simulator.X ** 2, axis=0) / simulator.X.shape[0])[None, :]
+            # normaliser = np.ones((1, NUM_LATENT))
         else:
             normaliser = np.ones((1, NUM_LATENT))
 
@@ -398,7 +397,7 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
 
         ax[metric_idx].set_yscale(scale)
         mhe_plot = ax[metric_idx].boxplot(mhe_data, positions=[1], sym='x',
-                                             patch_artist=True, widths=0.5)
+                                          patch_artist=True, widths=0.5)
         kalman_plot = ax[metric_idx].boxplot(kalman_data, positions=[2], sym='x',
                                              patch_artist=True, widths=0.5)
         robust_mhe_plot = ax[metric_idx].boxplot(robust_mhe_data, positions=range(3, len(BETA) + 3),
@@ -453,6 +452,84 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
     plt.show()
 
 
+def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
+    fig = plt.figure(figsize=figsize, dpi=300)
+
+    for metric in ['mse']:
+        if metric == 'mse':
+            metric_idx = 0
+            ylabel = 'NMSE'
+            scale = 'log'
+
+        observation_cov = NOISE_VAR * np.eye(2)
+        simulator = ConstantVelocityModel(
+            final_time=FINAL_TIME,
+            time_step=TIME_STEP,
+            observation_cov=observation_cov,
+            explosion_scale=EXPLOSION_SCALE,
+            contamination_probability=contamination,
+            seed=SIMULATOR_SEED
+        )
+
+        if metric == 'mse':
+            normaliser = (np.sum(simulator.X ** 2, axis=0) / simulator.X.shape[0])[None, :]
+        kalman_data, mhe_data, robust_mhe_data = pickle_load(results_file)
+
+        kalman_data = kalman_data[:, :, metric_idx] / normaliser
+        mhe_data = mhe_data[:, :, metric_idx] / normaliser
+        robust_mhe_data = robust_mhe_data[:, :, :, metric_idx] / normaliser[None, ...]
+
+        kalman_data = kalman_data.mean(axis=-1)
+        mhe_data = mhe_data.mean(axis=-1)
+        robust_mhe_data = robust_mhe_data.mean(axis=-1)
+
+        plt.yscale(scale)
+        kalman_plot = plt.boxplot(kalman_data, positions=[1], sym='x',
+                                             patch_artist=True, widths=0.5, showfliers=False)
+        mhe_plot = plt.boxplot(mhe_data, positions=[2], sym='x',
+                                          patch_artist=True, widths=0.5, showfliers=False)
+
+        robust_mhe_plot = plt.boxplot(robust_mhe_data, positions=range(3, len(BETA) + 3),
+                                                 sym='x', patch_artist=True, widths=0.5, showfliers=False)
+
+        kalman_plot['boxes'][0].set_facecolor('C1')
+        kalman_plot['boxes'][0].set_edgecolor('black')
+        kalman_plot['boxes'][0].set_alpha(1)
+
+        mhe_plot['boxes'][0].set_facecolor('C2')
+        mhe_plot['boxes'][0].set_edgecolor('black')
+        mhe_plot['boxes'][0].set_alpha(1)
+
+        for pc in robust_mhe_plot['boxes']:
+            pc.set_facecolor('C0')
+            pc.set_edgecolor('black')
+            pc.set_alpha(1)
+
+        for element in ['medians']:
+            kalman_plot[element][0].set_color('black')
+            mhe_plot[element][0].set_color('black')
+            [box.set_color('black') for box in robust_mhe_plot[element]]
+
+        plt.ylabel(ylabel, fontsize=30)
+        plt.yticks(fontsize=30)
+        plt.xticks(ticks=range(1, len(BETA) + 3), labels=['KF', 'MHE'] + BETA, fontsize=30, rotation=-30)
+        plt.grid(axis='y')
+
+        colors = ['C2', 'C1', 'C0']
+        labels = ['MHE', 'Kalman Filter', r'$\beta$-MHE']
+        plot_patches = [patches.Patch(color=c, label=l) for c, l in zip(colors, labels)]
+        # plot_patches = plot_patches + [lines.Line2D([0], [0], color='gold', ls='-.', label='Predictive Selection')]
+
+        # plt.legend(handles=plot_patches, loc='lower center',
+        #              frameon=False, bbox_to_anchor=(0.5, -0.8), ncol=2)
+        plt.legend(handles=plot_patches, loc='lower center',
+                     frameon=False, bbox_to_anchor=(0.5, -0.4), ncol=3, fontsize=30)
+        plt.xlabel(r'$\beta$', fontsize=30)
+
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight')
+
+
 if __name__ == '__main__':
     # for metric in ['mse', 'coverage']:
     #     for contamination in CONTAMINATION:
@@ -496,6 +573,6 @@ if __name__ == '__main__':
         aggregate_box_plot(
             contamination=contamination,
             results_file=f'../results/constant-velocity/impulsive_noise/beta-sweep-contamination-{contamination}.pk',
-            figsize=(8, 6),
+            figsize=(16, 9),
             save_path=f'../figures/constant-velocity/impulsive_noise/latents/boxplot_aggregate_{title}.pdf'
         )
