@@ -24,9 +24,8 @@ SIMULATOR_SEED = 1992
 NOISE_STD = 0.1
 FINAL_TIME = 10
 TIME_STEP = 0.1
-# BETA = [1e-5, 2e-5, 4e-5, 5e-5, 6e-5, 8e-5, 1e-4]
-BETA = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5, 0.8]
-CONTAMINATION = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+BETA = [1e-5, 2e-5, 4e-5, 6e-5, 8e-5, 1e-4]
+CONTAMINATION = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
 
 LABELS = np.array(['UKF'] + ['MHE'] + [r'$\beta$ = {}'.format(b) for b in BETA])
 TITLES = [
@@ -224,8 +223,9 @@ def plot_aggregate_latent1(results_path, figsize, save_path=None):
 
 
 def plot_aggregate_latent(results_path, figsize, save_path=None):
-    selected_models = [0, 1, 4, 5, 6, 7]
-    colors = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6']
+    # selected_models = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    selected_models = [0, 1, 2, 3, 4, 5]
+    colors = ['C1', 'C3', 'C4', 'C6']
 
     labels = LABELS[selected_models]
     positions = np.arange(1, len(selected_models) + 1)
@@ -235,8 +235,8 @@ def plot_aggregate_latent(results_path, figsize, save_path=None):
     for metric in (['mse']):
         if metric == 'mse':
             metric_idx = 0
-            label = 'NMSE'
-            scale = 'log'
+            label = 'RMSE'
+            scale = 'Log'
 
         plot_data = []
         for contamination in CONTAMINATION:
@@ -251,7 +251,8 @@ def plot_aggregate_latent(results_path, figsize, save_path=None):
             )
 
             if metric == 'mse':
-                normaliser = (np.sum(simulator.X ** 2, axis=0) / simulator.X.shape[0])[None, :]
+                # normaliser = (np.sum(simulator.X ** 2, axis=0) / simulator.X.shape[0])[None, :]
+                normaliser = np.ones((1, NUM_LATENT))
 
             results_file = os.path.join(results_path, f'beta-sweep-contamination-{contamination}.pk')
             ukf_data, mhe_data, robust_mhe_data = pickle_load(results_file)
@@ -269,15 +270,23 @@ def plot_aggregate_latent(results_path, figsize, save_path=None):
         for i in range(len(CONTAMINATION)):
             bplot = plt.boxplot(plot_data[i, :, selected_models].T, positions=(i * 7) + positions,
                                sym='x', patch_artist=True, manage_ticks=False,
-                               widths=0.6, flierprops={'markersize': 4}, showfliers=False)
+                               widths=0.6, flierprops={'markersize': 4}, showfliers=False, showmeans=True,
+                                  meanprops={'marker': 'o'})
             for box, m, color, l in zip(bplot['boxes'], bplot['medians'], colors, labels):
                 box.set_facecolor(color)
                 box.set_label(l)
                 m.set_color('k')
+
+            print(plot_data[i, :, selected_models].mean(axis=1))
+            plt.plot((i * 7) + positions, plot_data[i, :, selected_models].mean(axis=1),
+                     color='k', lw=2, ls='dashed', marker='s', markersize=10, zorder=2)
+
         plt.yticks(fontsize=20)
         plt.xticks(ticks=np.arange(2.5, 2.5 + 7 * len(CONTAMINATION), 7), labels=CONTAMINATION, fontsize=20)
         plt.ylabel(label, fontsize=20)
         plt.grid(axis='y')
+
+
 
     plt.xlabel(r'Contamination probability $p_c$', fontsize=20)
     plt.legend(handles=bplot['boxes'], loc='center', bbox_to_anchor=(0.5, -0.4), frameon=False, ncol=2, fontsize=20)
@@ -287,11 +296,11 @@ def plot_aggregate_latent(results_path, figsize, save_path=None):
 
 
 if __name__ == '__main__':
-    plot_metrics(
-        f'../results/reversible_reaction/impulsive_noise_with_student_t/',
-        figsize=(20, 8),
-        save_path='../figures/reversible_reaction/impulsive_noise_with_student_t/variation_with_contamination/'
-    )
+    # plot_metrics(
+    #     f'../results/reversible_reaction/impulsive_noise_with_student_t/',
+    #     figsize=(20, 8),
+    #     save_path='../figures/reversible_reaction/impulsive_noise_with_student_t/variation_with_contamination/'
+    # )
     #
     # for latent in range(6):
     #     plot_single_latent(

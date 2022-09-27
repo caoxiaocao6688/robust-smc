@@ -18,15 +18,15 @@ from experiment_utilities import pickle_save
 # Experiment Settings
 SIMULATOR_SEED = 1400
 RNG_SEED = 1218
-NUM_RUNS = 2
-BETA = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5, 0.8]
-# CONTAMINATION = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
-CONTAMINATION = [0.2]
-# Sampler Settings
+NUM_RUNS = 100
+# BETA = [0.00001, 0.00002, 0.00004, 0.00006, 0.00008, 0.0001, 0.0002]
+BETA = [0.0001]
+
+CONTAMINATION = [0.2] # Sampler Settings
 NUM_LATENT = 4
 NUM_SAMPLES = 100
 NOISE_VAR = 1.0
-FINAL_TIME = 100
+FINAL_TIME = 20
 TIME_STEP = 0.1
 EXPLOSION_SCALE = 100.0
 
@@ -223,7 +223,9 @@ def run2(runs, contamination, simulator=None):
 if __name__ == '__main__':
     for contamination in CONTAMINATION:
         results = run2(NUM_RUNS, contamination)
-        print(results)
         pickle_save(
             f'../results/constant-velocity/impulsive_noise/original_data/beta-sweep-contamination-{contamination}.pk',
             results)  # TODO
+        # pickle_save(
+        #     f'../results/constant-velocity/impulsive_noise/beta-sweep-contamination-{contamination}.pk',
+        #     results)

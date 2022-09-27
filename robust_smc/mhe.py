@@ -57,7 +57,6 @@ class Mhe:
             if t < self.slide_window:
                 y_seq[t] = y
                 self.filter_means.append(m_bar)
-
             else:
                 y_seq[0:self.slide_window - 1] = y_seq[1:self.slide_window]
                 y_seq[self.slide_window-1] = y

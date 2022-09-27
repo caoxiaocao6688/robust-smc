@@ -17,8 +17,8 @@ rc('axes', lw=1.2, titlesize='large', labelsize='x-large')
 rc('legend', fontsize='x-large')
 rc('font', family='serif')
 
-BETA = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.2, 0.5, 0.8]
-CONTAMINATION = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+BETA = [1e-5, 2e-5, 4e-5, 6e-5, 8e-5, 1e-4, 2e-4]
+CONTAMINATION = [0.2]
 LABELS = ['MHE', 'Kalman Filter'] + [r'$\beta$ = {}'.format(b) for b in BETA]
 TITLES = [
     'Displacement in $x$ direction',
@@ -380,8 +380,8 @@ def aggregate_box_plot1(contamination, results_file, figsize, save_path=None):
         )
 
         if metric == 'mse':
-            normaliser = (np.sum(simulator.X ** 2, axis=0) / simulator.X.shape[0])[None, :]
-            # normaliser = np.ones((1, NUM_LATENT))
+            # normaliser = (np.sum(simulator.X ** 2, axis=0) / simulator.X.shape[0])[None, :]
+            normaliser = np.ones((1, NUM_LATENT))
         else:
             normaliser = np.ones((1, NUM_LATENT))
 
@@ -391,9 +391,9 @@ def aggregate_box_plot1(contamination, results_file, figsize, save_path=None):
         mhe_data = mhe_data[:, :, metric_idx] / normaliser
         robust_mhe_data = robust_mhe_data[:, :, :, metric_idx] / normaliser[None, ...]
 
-        kalman_data = kalman_data.mean(axis=-1)
-        mhe_data = mhe_data.mean(axis=-1)
-        robust_mhe_data = robust_mhe_data.mean(axis=-1)
+        kalman_data = np.sqrt(kalman_data.mean(axis=-1))
+        mhe_data = np.sqrt(mhe_data.mean(axis=-1))
+        robust_mhe_data = np.sqrt(robust_mhe_data.mean(axis=-1))
 
         ax[metric_idx].set_yscale(scale)
         mhe_plot = ax[metric_idx].boxplot(mhe_data, positions=[1], sym='x',
@@ -458,8 +458,8 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
     for metric in ['mse']:
         if metric == 'mse':
             metric_idx = 0
-            ylabel = 'NMSE'
-            scale = 'log'
+            ylabel = 'RMSE'
+            scale = 'Linear'
 
         observation_cov = NOISE_VAR * np.eye(2)
         simulator = ConstantVelocityModel(
@@ -472,25 +472,34 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
         )
 
         if metric == 'mse':
-            normaliser = (np.sum(simulator.X ** 2, axis=0) / simulator.X.shape[0])[None, :]
+            normaliser = np.ones((1, NUM_LATENT))
         kalman_data, mhe_data, robust_mhe_data = pickle_load(results_file)
 
         kalman_data = kalman_data[:, :, metric_idx] / normaliser
         mhe_data = mhe_data[:, :, metric_idx] / normaliser
         robust_mhe_data = robust_mhe_data[:, :, :, metric_idx] / normaliser[None, ...]
 
-        kalman_data = kalman_data.mean(axis=-1)
-        mhe_data = mhe_data.mean(axis=-1)
-        robust_mhe_data = robust_mhe_data.mean(axis=-1)
+        kalman_data = np.sqrt(kalman_data.mean(axis=-1))
+        mhe_data = np.sqrt(mhe_data.mean(axis=-1))
+        robust_mhe_data = np.sqrt(robust_mhe_data.mean(axis=-1))
 
         plt.yscale(scale)
+
+        mean_data = np.zeros(2+len(BETA), )
+        mean_data[0] = kalman_data.mean(axis=0)
+        mean_data[1] = mhe_data.mean(axis=0)
+        mean_data[2:] = robust_mhe_data.mean(axis=0)
+
+        plt.plot(np.arange(1, len(BETA) + 3), mean_data, color='k', lw=2, ls='dashed', marker='s', markersize = 10, zorder=2)
+
         kalman_plot = plt.boxplot(kalman_data, positions=[1], sym='x',
-                                             patch_artist=True, widths=0.5, showfliers=False)
+                                  patch_artist=True, widths=0.5, showfliers=False, zorder=1)
         mhe_plot = plt.boxplot(mhe_data, positions=[2], sym='x',
-                                          patch_artist=True, widths=0.5, showfliers=False)
+                               patch_artist=True, widths=0.5, showfliers=False, zorder=1)
 
         robust_mhe_plot = plt.boxplot(robust_mhe_data, positions=range(3, len(BETA) + 3),
-                                                 sym='x', patch_artist=True, widths=0.5, showfliers=False)
+                                      sym='x', patch_artist=True, widths=0.5, showfliers=False, zorder=1)
+
 
         kalman_plot['boxes'][0].set_facecolor('C1')
         kalman_plot['boxes'][0].set_edgecolor('black')
@@ -509,11 +518,11 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
             kalman_plot[element][0].set_color('black')
             mhe_plot[element][0].set_color('black')
             [box.set_color('black') for box in robust_mhe_plot[element]]
-
+        plt.ylim(5, 30)
         plt.ylabel(ylabel, fontsize=30)
         plt.yticks(fontsize=30)
-        plt.xticks(ticks=range(1, len(BETA) + 3), labels=['KF', 'MHE'] + BETA, fontsize=30, rotation=-30)
-        plt.grid(axis='y')
+        plt.xticks(ticks=range(1, len(BETA) + 3), labels=['KF', 'MHE', '1e-5', '2e-5', '4e-5', '6e-5', '8e-5', '1e-4', '2e-4'], fontsize=30, rotation=-30)
+        plt.grid(axis='y', alpha=0.2, c='k')
 
         colors = ['C2', 'C1', 'C0']
         labels = ['MHE', 'Kalman Filter', r'$\beta$-MHE']
@@ -523,8 +532,9 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
         # plt.legend(handles=plot_patches, loc='lower center',
         #              frameon=False, bbox_to_anchor=(0.5, -0.8), ncol=2)
         plt.legend(handles=plot_patches, loc='lower center',
-                     frameon=False, bbox_to_anchor=(0.5, -0.4), ncol=3, fontsize=30)
+                   frameon=False, bbox_to_anchor=(0.5, -0.4), ncol=3, fontsize=30)
         plt.xlabel(r'$\beta$', fontsize=30)
+
 
     if save_path:
         plt.savefig(save_path, bbox_inches='tight')

@@ -168,7 +168,7 @@ class ConstantVelocityModel:
     """
 
     def __init__(self, final_time, time_step=0.1, observation_cov=None,
-                 explosion_scale=10.0, contamination_probability=0.05, seed=None):
+                 explosion_scale=100.0, contamination_probability=0.05, seed=None):
         self.final_time = final_time
         self.time_step = time_step
         self.simulation_steps = int(final_time / time_step)
