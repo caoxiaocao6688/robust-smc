@@ -5,7 +5,8 @@ import numpy as np
 from scipy.stats import mode
 
 import matplotlib.pyplot as plt
-
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 from matplotlib import rc, cm
 
 from robust_smc.data import ReversibleReaction
@@ -22,10 +23,10 @@ rc('font', family='serif')
 
 SIMULATOR_SEED = 1992
 NOISE_STD = 0.1
-FINAL_TIME = 10
+FINAL_TIME = 100
 TIME_STEP = 0.1
-BETA = [1e-5, 2e-5, 4e-5, 6e-5, 8e-5, 1e-4]
-CONTAMINATION = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+BETA = [r'$10^{-4}$', r'$2 \times 10^{-4}$']
+CONTAMINATION = [0, 0.05, 0.1, 0.15, 0.2, 0.25]
 
 LABELS = np.array(['UKF'] + ['MHE'] + [r'$\beta$ = {}'.format(b) for b in BETA])
 TITLES = [
@@ -222,10 +223,10 @@ def plot_aggregate_latent1(results_path, figsize, save_path=None):
         plt.savefig(save_file, bbox_inches='tight')
 
 
-def plot_aggregate_latent(results_path, figsize, save_path=None):
+def plot_aggregate_latent_old(results_path, figsize, save_path=None):
     # selected_models = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-    selected_models = [0, 1, 2, 3, 4, 5]
-    colors = ['C1', 'C3', 'C4', 'C6']
+    selected_models = [0, 1, 2, 3]
+    colors = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
 
     labels = LABELS[selected_models]
     positions = np.arange(1, len(selected_models) + 1)
@@ -236,7 +237,7 @@ def plot_aggregate_latent(results_path, figsize, save_path=None):
         if metric == 'mse':
             metric_idx = 0
             label = 'RMSE'
-            scale = 'Log'
+            scale = 'Linear'
 
         plot_data = []
         for contamination in CONTAMINATION:
@@ -268,28 +269,116 @@ def plot_aggregate_latent(results_path, figsize, save_path=None):
 
         plt.yscale(scale)
         for i in range(len(CONTAMINATION)):
+            # bplot = plt.boxplot(plot_data[i, :, selected_models].T, positions=(i * 7) + positions,
+            #                    sym='x', patch_artist=True, manage_ticks=False,
+            #                    widths=0.6, flierprops={'markersize': 4}, showfliers=False, zorder=1)
             bplot = plt.boxplot(plot_data[i, :, selected_models].T, positions=(i * 7) + positions,
-                               sym='x', patch_artist=True, manage_ticks=False,
-                               widths=0.6, flierprops={'markersize': 4}, showfliers=False, showmeans=True,
-                                  meanprops={'marker': 'o'})
+                                sym='x', patch_artist=True, manage_ticks=False,
+                                widths=0.6, flierprops={'markersize': 4}, showfliers=False, zorder=1)
             for box, m, color, l in zip(bplot['boxes'], bplot['medians'], colors, labels):
                 box.set_facecolor(color)
                 box.set_label(l)
                 m.set_color('k')
 
-            print(plot_data[i, :, selected_models].mean(axis=1))
             plt.plot((i * 7) + positions, plot_data[i, :, selected_models].mean(axis=1),
-                     color='k', lw=2, ls='dashed', marker='s', markersize=10, zorder=2)
+                     color='k', lw=1, ls='dashed', marker='s', markersize=5, zorder=2)
 
+        plt.ylim(0, 100)
         plt.yticks(fontsize=20)
         plt.xticks(ticks=np.arange(2.5, 2.5 + 7 * len(CONTAMINATION), 7), labels=CONTAMINATION, fontsize=20)
         plt.ylabel(label, fontsize=20)
         plt.grid(axis='y')
 
-
-
     plt.xlabel(r'Contamination probability $p_c$', fontsize=20)
-    plt.legend(handles=bplot['boxes'], loc='center', bbox_to_anchor=(0.5, -0.4), frameon=False, ncol=2, fontsize=20)
+    # plt.legend(handles=bplot['boxes'], loc='center', bbox_to_anchor=(0.5, -0.4), frameon=False, ncol=2, fontsize=20)
+    if save_path:
+        save_file = os.path.join(save_path, f'Reactor Model.pdf')
+        plt.savefig(save_file, bbox_inches='tight')
+
+
+def plot_aggregate_latent(results_path, figsize, save_path=None):
+    selected_models = [0, 1, 2, 3]
+    colors = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7']
+
+    labels = LABELS[selected_models]
+    positions = 40 * np.arange(1, len(selected_models) + 1)
+
+    f1 = plt.figure(1)
+    ax1 = f1.add_axes([0.2, 0.2, 0.6, 0.6])
+    for metric in (['mse']):
+        if metric == 'mse':
+            metric_idx = 0
+            label = 'RMSE'
+            scale = 'Log'
+
+        plot_data = []
+        for contamination in CONTAMINATION:
+
+            simulator = ReversibleReaction(
+                final_time=FINAL_TIME,
+                time_step=TIME_STEP,
+                observation_std=NOISE_STD,
+                process_std=None,
+                contamination_probability=contamination,
+                seed=SIMULATOR_SEED
+            )
+
+            if metric == 'mse':
+                normaliser = np.ones((1, NUM_LATENT))
+
+            results_file = os.path.join(results_path, f'beta-sweep-contamination-{contamination}.pk')
+            ukf_data, mhe_data, robust_mhe_data = pickle_load(results_file)
+            concatenated_data = np.concatenate([
+                ukf_data[:, None, :, metric_idx],
+                mhe_data[:, None, :, metric_idx],
+                robust_mhe_data[:, :, :, metric_idx],
+            ], axis=1)
+            concatenated_data = concatenated_data / normaliser  # contamination x N x models x num_latent
+            plot_data.append(concatenated_data)
+
+        plot_data = np.stack(plot_data).mean(axis=-1)[:, :, :]
+
+        plt.yscale(scale)
+        for i in range(len(CONTAMINATION)):
+            bplot = ax1.violinplot(plot_data[i, :, selected_models].T, positions=(i * 260) + positions, showmeans=False,
+                                   showmedians=False, widths=40, vert=True, showextrema=False)
+
+            for box, color, l in zip(bplot['bodies'], colors, labels):
+                box.set_facecolor(color)
+                box.set_label(l)
+                box.set_edgecolor('black')
+            ax1.plot((i * 260) + positions, plot_data[i, :, selected_models].mean(axis=1),
+                     color='k', lw=1, ls='dashed', marker='s', markersize=3, zorder=2)
+
+        plt.yticks(fontsize=20)
+        plt.xticks(ticks=np.arange(100, 100 + 260 * len(CONTAMINATION), 260), labels=CONTAMINATION, fontsize=20)
+        plt.ylabel(label, fontsize=20)
+        plt.grid(axis='y')
+
+        plt.xlabel(r'Contamination probability $p_c$', fontsize=20)
+        plt.legend(handles=bplot['bodies'], loc='center', bbox_to_anchor=(1.5, 0.8), frameon=False, ncol=2, fontsize=15)
+        ax_in1 = inset_axes(ax1, width="70%", height="70%", loc='center', bbox_to_anchor=(1, -0.3, 1, 1),
+                            bbox_transform=ax1.transAxes)
+        for i in range(len(CONTAMINATION)):
+            g1_in = ax_in1.violinplot(plot_data[i, :, selected_models].T, positions=(i * 260) + positions, showmeans=False,
+                                   showmedians=False, widths=40, vert=True, showextrema=False)
+            for box, color, l in zip(g1_in['bodies'], colors, labels):
+                box.set_facecolor(color)
+                box.set_label(l)
+                box.set_edgecolor('black')
+            # ax_in1.get_legend().remove()
+            ax_in1.plot((i * 260) + positions, plot_data[i, :, selected_models].mean(axis=1),
+                 color='k', lw=1, ls='dashed', marker='s', markersize=3, zorder=2)
+        # ax_in1.get_xaxis().set_visible(False)
+        # ax_in1.get_yaxis().set_visible(False)
+        plt.yticks(fontsize=10)
+        plt.xticks(ticks=np.arange(100, 100 + 260 * len(CONTAMINATION), 260), labels=CONTAMINATION, fontsize=10)
+        ax_in1.set_ylim(1, 10)
+        ax_in1.set_xlim(-40.0, 1500.0)
+        mark_inset(ax1, ax_in1, loc1=1, loc2=4, fc="none", ec='r', lw=1, ls='dotted', alpha=1)
+        mark_inset(ax1, ax_in1, loc1=3, loc2=2, fc="none", ec='r', lw=1, ls='dotted', alpha=1)
+
+
     if save_path:
         save_file = os.path.join(save_path, f'Reactor Model.pdf')
         plt.savefig(save_file, bbox_inches='tight')

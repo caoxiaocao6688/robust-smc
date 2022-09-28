@@ -73,7 +73,7 @@ ax_in1.get_yaxis().set_visible(False)
 ax_in1.set_xlim(50, 150)
 ax_in1.set_ylim(-4, 4)
 plt.axhline(0, ls='-.', c='k', lw=1, alpha=0.5)
-mark_inset(ax1, ax_in1, loc1=3, loc2=1, fc="none", ec='r', lw=1, ls='dotted', alpha=0.5)
+mark_inset(ax1, ax_in1, loc1=3, loc2=1, fc="none", ec='r', lw=2, ls='dotted', alpha=0.8)
 
 plt.savefig("../figures/constant-velocity/impulsive_noise/original/1.pdf")
 
@@ -104,7 +104,7 @@ ax_in2.get_yaxis().set_visible(False)
 ax_in2.set_xlim(50, 150)
 ax_in2.set_ylim(-4, 4)
 plt.axhline(0, ls='-.', c='k', lw=1, alpha=0.5)
-mark_inset(ax2, ax_in2, loc1=3, loc2=1, fc="none", ec='r', lw=1, ls='dotted', alpha=0.5)
+mark_inset(ax2, ax_in2, loc1=3, loc2=1, fc="none", ec='r', lw=2, ls='dotted', alpha=0.8)
 
 plt.savefig("../figures/constant-velocity/impulsive_noise/original/2.pdf")
 
@@ -135,7 +135,7 @@ ax_in3.get_yaxis().set_visible(False)
 ax_in3.set_xlim(50, 150)
 ax_in3.set_ylim(-4, 4)
 plt.axhline(0, ls='-.', c='k', lw=1, alpha=0.5)
-mark_inset(ax3, ax_in3, loc1=3, loc2=1, fc="none", ec='r', lw=1, ls='dotted', alpha=0.5)
+mark_inset(ax3, ax_in3, loc1=3, loc2=1, fc="none", ec='r', lw=2, ls='dotted', alpha=0.8)
 
 plt.savefig("../figures/constant-velocity/impulsive_noise/original/3.pdf")
 
@@ -165,6 +165,6 @@ ax_in4.get_yaxis().set_visible(False)
 ax_in4.set_xlim(50, 150)
 ax_in4.set_ylim(-4, 4)
 plt.axhline(0, ls='-.', c='k', lw=1, alpha=0.5)
-mark_inset(ax4, ax_in4, loc1=3, loc2=1, fc="none", ec='r', lw=1, ls='dotted', alpha=0.5)
+mark_inset(ax4, ax_in4, loc1=3, loc2=1, fc="none", ec='r', lw=2, ls='dotted', alpha=0.8)
 
 plt.savefig("../figures/constant-velocity/impulsive_noise/original/4.pdf")

@@ -416,7 +416,7 @@ class ReversibleReaction:
         t_loc = (u <= self.contamination_probability)
         self.contamination_locations = np.argwhere(t_loc)
         noise[norm_loc] = self.rng.randn(norm_loc.sum(), Y.shape[1])
-        noise[t_loc] = 10*self.rng.standard_t(df=self.degrees_of_freedom, size=(t_loc.sum(), 1))
+        noise[t_loc] = self.rng.standard_t(df=self.degrees_of_freedom, size=(t_loc.sum(), 1))
         return self.observation_std * noise
 
     def _simulate_system(self):

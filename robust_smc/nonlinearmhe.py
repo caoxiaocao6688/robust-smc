@@ -1,6 +1,6 @@
 import numpy as np
 import casadi as ca
-from filterpy.kalman import UnscentedKalmanFilter, MerweScaledSigmaPoints
+from filterpy.kalman import UnscentedKalmanFilter, JulierSigmaPoints
 from robust_smc.data import peaks
 
 
@@ -37,7 +37,7 @@ class NonlinearMhe:
         self.observation_cov = observation_cov * np.eye(self.y_dim)
         self.m_0 = m_0
         self.P_0 = P_0
-        self.slide_window = 5
+        self.slide_window = 3
         self.x_dim = transition_cov.shape[0]
         self.time_step = 0.1
 
@@ -86,7 +86,7 @@ class NonlinearMhe:
         self.filter_means = [self.m_0]
         self.filter_covs = [self.P_0]
         y_seq = np.zeros((self.slide_window, self.y_dim))
-        sigmas = MerweScaledSigmaPoints(n=self.x_dim, alpha=.1, beta=2., kappa=1.)
+        sigmas = JulierSigmaPoints(n=self.x_dim, kappa=1)
         ukf = UnscentedKalmanFilter(dim_x=self.x_dim, dim_z=self.y_dim, dt=0, hx=self.h_1x,
                                     fx=self.f_1x,
                                     points=sigmas)

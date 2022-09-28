@@ -1,6 +1,6 @@
 import numpy as np
 import casadi as ca
-from filterpy.kalman import UnscentedKalmanFilter, MerweScaledSigmaPoints
+from filterpy.kalman import UnscentedKalmanFilter, JulierSigmaPoints
 
 from robust_smc.data import peaks
 
@@ -71,7 +71,7 @@ class UKF:
         """
         self.filter_means = [self.m_0]
         self.filter_covs = [self.P_0]
-        sigmas = MerweScaledSigmaPoints(n=self.x_dim, alpha=.1, beta=2., kappa=1.)
+        sigmas = JulierSigmaPoints(n=self.x_dim, kappa=1)
         ukf = UnscentedKalmanFilter(dim_x=self.x_dim, dim_z=self.y_dim, dt=0, hx=self.h_1x,
                                     fx=self.f_1x,
                                     points=sigmas)

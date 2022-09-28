@@ -17,7 +17,8 @@ rc('axes', lw=1.2, titlesize='large', labelsize='x-large')
 rc('legend', fontsize='x-large')
 rc('font', family='serif')
 
-BETA = [1e-5, 2e-5, 4e-5, 6e-5, 8e-5, 1e-4, 2e-4]
+BETA = [r'$10^{-5}$', r'$2 \times 10^{-5}$', r'$4 \times 10^{-5}$', r'$6 \times 10^{-5}$', r'$8 \times 10^{-5}$',
+        r'$10^{-4}$', r'$2 \times 10^{-4}$']
 CONTAMINATION = [0.2]
 LABELS = ['MHE', 'Kalman Filter'] + [r'$\beta$ = {}'.format(b) for b in BETA]
 TITLES = [
@@ -485,12 +486,13 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
 
         plt.yscale(scale)
 
-        mean_data = np.zeros(2+len(BETA), )
+        mean_data = np.zeros(2 + len(BETA), )
         mean_data[0] = kalman_data.mean(axis=0)
         mean_data[1] = mhe_data.mean(axis=0)
         mean_data[2:] = robust_mhe_data.mean(axis=0)
 
-        plt.plot(np.arange(1, len(BETA) + 3), mean_data, color='k', lw=2, ls='dashed', marker='s', markersize = 10, zorder=2)
+        plt.plot(np.arange(1, len(BETA) + 3), mean_data, color='k', lw=2, ls='dashed', marker='s', markersize=10,
+                 zorder=2)
 
         kalman_plot = plt.boxplot(kalman_data, positions=[1], sym='x',
                                   patch_artist=True, widths=0.5, showfliers=False, zorder=1)
@@ -499,7 +501,6 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
 
         robust_mhe_plot = plt.boxplot(robust_mhe_data, positions=range(3, len(BETA) + 3),
                                       sym='x', patch_artist=True, widths=0.5, showfliers=False, zorder=1)
-
 
         kalman_plot['boxes'][0].set_facecolor('C1')
         kalman_plot['boxes'][0].set_edgecolor('black')
@@ -521,7 +522,9 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
         plt.ylim(5, 30)
         plt.ylabel(ylabel, fontsize=30)
         plt.yticks(fontsize=30)
-        plt.xticks(ticks=range(1, len(BETA) + 3), labels=['KF', 'MHE', '1e-5', '2e-5', '4e-5', '6e-5', '8e-5', '1e-4', '2e-4'], fontsize=30, rotation=-30)
+        plt.xticks(ticks=range(1, len(BETA) + 3),
+                   labels=['KF', 'MHE']+BETA, fontsize=30,
+                   rotation=-30)
         plt.grid(axis='y', alpha=0.2, c='k')
 
         colors = ['C2', 'C1', 'C0']
@@ -534,7 +537,6 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
         plt.legend(handles=plot_patches, loc='lower center',
                    frameon=False, bbox_to_anchor=(0.5, -0.4), ncol=3, fontsize=30)
         plt.xlabel(r'$\beta$', fontsize=30)
-
 
     if save_path:
         plt.savefig(save_path, bbox_inches='tight')

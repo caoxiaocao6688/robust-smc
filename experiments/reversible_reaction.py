@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 
 from robust_smc.data import ReversibleReaction
@@ -15,9 +17,9 @@ from experiment_utilities import pickle_save
 SIMULATOR_SEED = 1992
 RNG_SEED = 24
 NUM_RUNS = 100
-BETA = [1e-5, 2e-5, 4e-5, 6e-5, 8e-5, 1e-4]
-# CONTAMINATION = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
-CONTAMINATION = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+BETA = [1e-4]
+# CONTAMINATION = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+CONTAMINATION = [0.25]
 # Sampler Settings
 NUM_LATENT = 2
 NUM_SAMPLES = 1000
@@ -61,7 +63,9 @@ def experiment_step(simulator):
         m_0=np.array([0.1, 4.5]),
         P_0=np.diag(prior_std)**2
     )
+    a = time.time()
     ukf.filter()
+    print(time.time()-a)
 
     # MHE
     mhe = NonlinearMhe(
@@ -72,7 +76,10 @@ def experiment_step(simulator):
         m_0=np.array([0.1, 4.5]),
         P_0=np.diag(prior_std)**2
     )
+    a = time.time()
     mhe.filter()
+    print(time.time()-a)
+
 
     # beta-MHE
     robust_mhes = []
@@ -86,7 +93,9 @@ def experiment_step(simulator):
             m_0=np.array([0.1, 4.5]),
             P_0=np.diag(prior_std)**2
         )
+        a = time.time()
         robust_mhe.filter()
+        print(time.time() - a)
         robust_mhes.append(robust_mhe)
 
     return simulator, ukf, mhe, robust_mhes
@@ -168,9 +177,31 @@ def run(runs, contamination):
         robust_mhe_data.append([compute_mse_and_coverage(simulator, robust_mhe) for robust_mhe in robust_mhes])
     return np.array(ukf_data), np.array(mhe_data), np.array(robust_mhe_data)
 
+def run2(runs, contamination, simulator=None):
+    process_std = None
+    simulator = ReversibleReaction(
+        final_time=FINAL_TIME,
+        time_step=TIME_STEP,
+        observation_std=NOISE_STD,
+        process_std=process_std,
+        contamination_probability=contamination,
+        seed=SIMULATOR_SEED
+    )
+    robust_mhe_error_list, ukf_error_list, mhe_error_list = [], [], []
+    for _ in trange(runs):
+        simulator, ukf, mhe, robust_mhes = experiment_step(simulator)
+        ukf_error = simulator.X - np.squeeze(np.array(ukf.filter_means), axis=2)
+        mhe_error = simulator.X - np.squeeze(np.array(mhe.filter_means), axis=2)
+        robust_mhes_error = simulator.X - [np.squeeze(np.array(robust_mhe.filter_means), axis=2) for robust_mhe in robust_mhes]
+        ukf_error_list.append(ukf_error)
+        robust_mhe_error_list.append(robust_mhes_error)
+        mhe_error_list.append(mhe_error)
+    return np.array(ukf_error_list), np.array(mhe_error_list), np.array(robust_mhe_error_list)
+
 
 if __name__ == '__main__':
     for contamination in CONTAMINATION:
         print('CONTAMINATION=', contamination)
-        results = run(NUM_RUNS, contamination)
-        pickle_save(f'../results/reversible_reaction/impulsive_noise_with_student_t/beta-sweep-contamination-{contamination}.pk', results)
+        results = run2(NUM_RUNS, contamination)
+        # pickle_save(f'../results/reversible_reaction/impulsive_noise_with_student_t/beta-sweep-contamination-{contamination}.pk', results)
+        pickle_save(f'../results/reversible_reaction/impulsive_noise_with_student_t/original/beta-sweep-contamination-{contamination}.pk', results)
