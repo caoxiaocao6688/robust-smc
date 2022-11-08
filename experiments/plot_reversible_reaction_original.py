@@ -2,15 +2,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import matplotlib
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
 BETA = [0.0001]
+font = 25
 
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "DeJavu Serif",
-    "font.sans-serif": ["Helvetica"]})
+matplotlib.rcParams['font.family'] = ['serif']
 
 palette = sns.color_palette("tab10", len(BETA) + 2)
 
@@ -45,17 +44,17 @@ f1 = plt.figure(1)
 ax1 = f1.add_axes([0.2, 0.2, 0.6, 0.6])
 g1 = sns.lineplot(x='Step', y="Error", hue="Algorithm", style="Algorithm", data=pd_error0,
                   linewidth=1, palette=palette, dashes=False)
-ax1.set_ylabel('Error', fontsize=15)
-ax1.set_xlabel("Step", fontsize=15)
+ax1.set_ylabel('Error', fontsize=font)
+ax1.set_xlabel("Step", fontsize=font)
 plt.xlim(0, time_length)
 plt.ylim(-8, 8)
 plt.axhline(0, ls='-.', c='k', lw=1, alpha=0.5)
 ax1.set_xticks(20 * np.arange(6))
-ax1.set_xticklabels(('0', '20', '40', '60', '80', '100'), fontsize=12)
+ax1.set_xticklabels(('0', '20', '40', '60', '80', '100'), fontsize=font)
 handles, labels = ax1.get_legend_handles_labels()
-ax1.legend(handles=handles, labels=['UKF', 'MHE', r'$\beta$-MHE'])
-plt.yticks(fontsize=15)
-plt.xticks(fontsize=15)
+ax1.legend(handles=handles, labels=['UKF', 'MHE', r'$\beta$-MHE'], fontsize=15)
+plt.yticks(fontsize=font)
+plt.xticks(fontsize=font)
 
 # ax_in1 = inset_axes(ax1, width="50%", height="50%", loc='center', bbox_to_anchor=(-0.05, 0.05, 1, 1),
 #                           bbox_transform=ax1.transAxes)
@@ -76,17 +75,17 @@ ax2 = f2.add_axes([0.2, 0.2, 0.6, 0.6])
 g2 = sns.lineplot(x='Step', y="Error", hue="Algorithm", style="Algorithm", data=pd_error1,
                   linewidth=1, palette=palette, dashes=False
                   )
-ax2.set_ylabel('Error', fontsize=15)
-ax2.set_xlabel("Step", fontsize=15)
+ax2.set_ylabel('Error', fontsize=font)
+ax2.set_xlabel("Step", fontsize=font)
 plt.xlim(0, time_length)
 plt.ylim(-8, 8)
 plt.axhline(0, ls='-.', c='k', lw=1, alpha=0.5)
 ax2.set_xticks(20 * np.arange(6))
-ax2.set_xticklabels(('0', '20', '40', '60', '80', '100'), fontsize=12)
+ax2.set_xticklabels(('0', '20', '40', '60', '80', '100'), fontsize=font)
 handles, labels = ax2.get_legend_handles_labels()
-ax2.legend(handles=handles, labels=['UKF', 'MHE', r'$\beta$-MHE'])
-plt.yticks(fontsize=15)
-plt.xticks(fontsize=15)
+ax2.legend(handles=handles, labels=['UKF', 'MHE', r'$\beta$-MHE'], fontsize=15)
+plt.yticks(fontsize=font)
+plt.xticks(fontsize=font)
 
 # ax_in2 = inset_axes(ax2, width="50%", height="50%", loc='center', bbox_to_anchor=(-0.05, 0.05, 1, 1),
 #                           bbox_transform=ax2.transAxes)
