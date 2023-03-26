@@ -78,7 +78,7 @@ class RobustifiedNonlinearMhe:
             return ca.vertcat(x0, x1)
 
     def h_1x(self, x):
-        return x[0] + x[1]
+        return np.atleast_1d(x[0] + x[1])
 
     def filter(self):
         """
@@ -97,7 +97,7 @@ class RobustifiedNonlinearMhe:
 
         for t in range(self.data.shape[0]):
             ukf.predict()
-            y = self.data[t]
+            y = np.atleast_1d(self.data[t])
             if not np.isnan(y).any():
                 ukf.update(y)
 
@@ -157,9 +157,9 @@ class RobustifiedNonlinearMhe:
             ca_y = ca_Y[:, k]
             ca_x_hat = ca_f(ca_x_hat, ca_xi)
             ca_cost_fn = ca_cost_fn \
-                         + 1 / ((self.beta + 1) ** 1.5 * (2 * np.pi) ** (self.y_dim * self.beta / 2) * (400 * 400) ** (
+                         + 1 / ((self.beta + 1) ** 1.5 * (2 * np.pi) ** (self.y_dim * self.beta / 2) * (0.02) ** (
                         self.beta / 2)) \
-                         - (1 / self.beta) * 1 / ((2 * np.pi) ** (self.beta * self.y_dim / 2) * (400*400)** (
+                         - (1 / self.beta) * 1 / ((2 * np.pi) ** (self.beta * self.y_dim / 2) * (0.02)** (
                         self.beta / 2)) * ca.exp(
                 -0.5 * self.beta * (ca_y - ca_h(ca_x_hat)).T @ ca_R_inv @ (ca_y - ca_h(ca_x_hat)))  \
                          + 0.5 * ca_xi.T @ ca_Q_inv @ ca_xi

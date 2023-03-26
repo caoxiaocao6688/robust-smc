@@ -427,9 +427,9 @@ class ReversibleReaction:
         X[0, :] = self.X0
         for t in range(self.simulation_steps):
             X0 = X[t, 0] - self.time_step * 2 * self.k1 * X[t, 0] ** 2 + self.time_step * 2 * self.k2 * X[
-                                                                                                                   t, 1]
+                t, 1]
             X1 = X[t, 1] + self.time_step * self.k1 * X[t, 0] ** 2 - self.time_step * self.k2 * X[
-                                                                                                                      t, 1]
+                t, 1]
             state_evolution = np.array([[X0], [X1]])
             process_noise = self.process_std[:, None] * self.rng.randn(2, 1)
             X[t + 1, :] = (state_evolution + process_noise)[:, 0]
@@ -442,3 +442,4 @@ class ReversibleReaction:
         Y = self.observation_model(self.X)
         Y += self.noise_model(Y)
         return Y
+

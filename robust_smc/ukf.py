@@ -63,7 +63,7 @@ class UKF:
         return np.array([x0, x1])
 
     def h_1x(self, x):
-        return np.array(x[0]+x[1])
+        return np.atleast_1d(x[0]+x[1])
 
     def filter(self):
         """
@@ -80,7 +80,7 @@ class UKF:
 
         for t in range(self.data.shape[0]):
             ukf.predict()
-            y = self.data[t]
+            y = np.atleast_1d(self.data[t])
             if not np.isnan(y).any():
                 ukf.update(y)
 

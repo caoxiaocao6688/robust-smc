@@ -458,7 +458,7 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
         if metric == 'mse':
             metric_idx = 0
             ylabel = 'RMSE'
-            scale = 'Linear'
+            scale = 'linear'
 
         observation_cov = NOISE_VAR * np.eye(2)
         simulator = ConstantVelocityModel(

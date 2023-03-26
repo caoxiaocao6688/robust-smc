@@ -16,14 +16,15 @@ from experiment_utilities import pickle_save
 # Experiment Settings
 SIMULATOR_SEED = 1992
 RNG_SEED = 24
-NUM_RUNS = 100
-BETA = [1e-4]
-# CONTAMINATION = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
-CONTAMINATION = [0.25]
+NUM_RUNS = 40
+BETA = [1e-4, 2e-4]
+# BETA = [1e-3, 1e-2]
+CONTAMINATION = [0, 0.05, 0.1, 0.15, 0.2, 0.25]
+# CONTAMINATION = [0.25]
 # Sampler Settings
 NUM_LATENT = 2
 NUM_SAMPLES = 1000
-NOISE_STD = 0.1
+NOISE_STD = np.sqrt(0.02)
 FINAL_TIME = 10
 TIME_STEP = 0.1
 
@@ -61,11 +62,11 @@ def experiment_step(simulator):
         transition_cov=transition_cov,
         observation_cov=observation_cov,
         m_0=np.array([0.1, 4.5]),
-        P_0=np.diag(prior_std)**2
+        P_0=np.diag(prior_std) ** 2
     )
     a = time.time()
     ukf.filter()
-    print(time.time()-a)
+    print('UKF_time:', time.time() - a)
 
     # MHE
     mhe = NonlinearMhe(
@@ -74,12 +75,11 @@ def experiment_step(simulator):
         transition_cov=transition_cov,
         observation_cov=observation_cov,
         m_0=np.array([0.1, 4.5]),
-        P_0=np.diag(prior_std)**2
+        P_0=np.diag(prior_std) ** 2
     )
     a = time.time()
     mhe.filter()
-    print(time.time()-a)
-
+    print('MHE_time:', time.time() - a)
 
     # beta-MHE
     robust_mhes = []
@@ -91,11 +91,11 @@ def experiment_step(simulator):
             transition_cov=transition_cov,
             observation_cov=observation_cov,
             m_0=np.array([0.1, 4.5]),
-            P_0=np.diag(prior_std)**2
+            P_0=np.diag(prior_std) ** 2
         )
         a = time.time()
         robust_mhe.filter()
-        print(time.time() - a)
+        print('Robust_MHE_time:', time.time() - a)
         robust_mhes.append(robust_mhe)
 
     return simulator, ukf, mhe, robust_mhes
@@ -177,6 +177,7 @@ def run(runs, contamination):
         robust_mhe_data.append([compute_mse_and_coverage(simulator, robust_mhe) for robust_mhe in robust_mhes])
     return np.array(ukf_data), np.array(mhe_data), np.array(robust_mhe_data)
 
+
 def run2(runs, contamination, simulator=None):
     process_std = None
     simulator = ReversibleReaction(
@@ -192,7 +193,8 @@ def run2(runs, contamination, simulator=None):
         simulator, ukf, mhe, robust_mhes = experiment_step(simulator)
         ukf_error = simulator.X - np.squeeze(np.array(ukf.filter_means), axis=2)
         mhe_error = simulator.X - np.squeeze(np.array(mhe.filter_means), axis=2)
-        robust_mhes_error = simulator.X - [np.squeeze(np.array(robust_mhe.filter_means), axis=2) for robust_mhe in robust_mhes]
+        robust_mhes_error = simulator.X - [np.squeeze(np.array(robust_mhe.filter_means), axis=2) for robust_mhe in
+                                           robust_mhes]
         ukf_error_list.append(ukf_error)
         robust_mhe_error_list.append(robust_mhes_error)
         mhe_error_list.append(mhe_error)
@@ -202,6 +204,6 @@ def run2(runs, contamination, simulator=None):
 if __name__ == '__main__':
     for contamination in CONTAMINATION:
         print('CONTAMINATION=', contamination)
-        results = run2(NUM_RUNS, contamination)
+        results = run(NUM_RUNS, contamination)
         # pickle_save(f'../results/reversible_reaction/impulsive_noise_with_student_t/beta-sweep-contamination-{contamination}.pk', results)
         pickle_save(f'../results/reversible_reaction/impulsive_noise_with_student_t/original/beta-sweep-contamination-{contamination}.pk', results)
