@@ -60,8 +60,15 @@ class Robot:
         noise[loc] = 10 * self.rng.rand(loc.sum(), 1)
         return self.observation_std * noise
 
+    # def renoise(self, run):
+    #     return self.Y_list[run] + self.noise_model(self.Y_list[run])  # TODO
+
     def renoise(self, run):
-        return self.Y_list[run] + self.noise_model(self.Y_list[run])  # TODO
+        Y = self.Y_list[run]
+        p_u = self.rng.rand(Y.shape[0])
+        loc = (p_u <= self.contamination)
+        Y[loc, 0:3] = 20
+        return Y
 
 
 def experiment_step(simulator, run):
@@ -215,7 +222,10 @@ def run2(contamination):
     simulator = Robot(
         contamination=contamination,
         seed=SIMULATOR_SEED,
-        filepath='../data_processing/20230216-140452.npz',
+        filepath_list=['../data_processing/20230216-140452.npz',
+                       '../data_processing/20230216-141321.npz', '../data_processing/20230216-141616.npz',
+                       '../data_processing/20230216-142042.npz'],
+        # filepath_list=['../data_processing/20230216-140452.npz'],
         min_len=101
     )
     robust_mhe_error_list, ukf_error_list, mhe_error_list = [], [], []

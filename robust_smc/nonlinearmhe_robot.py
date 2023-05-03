@@ -145,7 +145,7 @@ class NonlinearMheRobot:
         ca_h = ca.Function('h', [ca_x], [ca_RHS])
 
         ca_x_hat = ca_x_hat0
-        ca_cost_fn = (ca_x_hat - ca_x_bar0).T @ ca_P0_inv @ (ca_x_hat - ca_x_bar0) * 1e-6  # cost function
+        ca_cost_fn = (ca_x_hat - ca_x_bar0).T @ ca_P0_inv @ (ca_x_hat - ca_x_bar0) * 1e-8  # cost function
 
         for k in range(slide_window):
             ca_xi = ca_Xi[:, k]
@@ -153,8 +153,8 @@ class NonlinearMheRobot:
             ca_u = ca_U[:, k]
             ca_x_hat = ca_f(ca_x_hat, ca_u, ca_xi)
             ca_cost_fn = ca_cost_fn \
-                         + (ca_y - ca_h(ca_x_hat)).T @ ca_R_inv @ (ca_y - ca_h(ca_x_hat)) * 1e-6 \
-                         + ca_xi.T @ ca_Q_inv @ ca_xi * 1e-6
+                         + (ca_y - ca_h(ca_x_hat)).T @ ca_R_inv @ (ca_y - ca_h(ca_x_hat)) * 1e-8 \
+                         + ca_xi.T @ ca_Q_inv @ ca_xi * 1e-8
 
         # 自变量设置
         ca_OPT_variables = ca.vertcat(

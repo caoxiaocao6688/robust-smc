@@ -145,7 +145,7 @@ class RobustifiedNonlinearMheRobot:
         ca_h = ca.Function('h', [ca_x], [ca_RHS])
 
         ca_x_hat = ca_x_hat0
-        ca_cost_fn = 0.5 * (ca_x_hat - ca_x_bar0).T @ ca_P0_inv @ (ca_x_hat - ca_x_bar0) * 1e-6  # cost function
+        ca_cost_fn = 0.5 * (ca_x_hat - ca_x_bar0).T @ ca_P0_inv @ (ca_x_hat - ca_x_bar0) * 1e-8  # cost function
 
         for k in range(slide_window):
             ca_xi = ca_Xi[:, k]
@@ -154,12 +154,12 @@ class RobustifiedNonlinearMheRobot:
             ca_cost_fn = ca_cost_fn \
                          + 1 / ((self.beta + 1) ** 1.5 * (2 * np.pi) ** (self.y_dim * self.beta / 2) * (
                 la.det(self.observation_cov)) ** (
-                                        self.beta / 2)) * 1e-6 \
+                                        self.beta / 2)) * 1e-8 \
                          - (1 / self.beta) * 1 / (
                                      (2 * np.pi) ** (self.beta * self.y_dim / 2) * (la.det(self.observation_cov)) ** (
                                      self.beta / 2)) * ca.exp(
-                -0.5 * self.beta * (ca_y - ca_h(ca_x_hat)).T @ ca_R_inv @ (ca_y - ca_h(ca_x_hat))) * 1e-6 \
-                         + 0.5 * ca_xi.T @ ca_Q_inv @ ca_xi * 1e-6
+                -0.5 * self.beta * (ca_y - ca_h(ca_x_hat)).T @ ca_R_inv @ (ca_y - ca_h(ca_x_hat))) * 1e-8 \
+                         + 0.5 * ca_xi.T @ ca_Q_inv @ ca_xi * 1e-8
 
         # 自变量设置
         ca_OPT_variables = ca.vertcat(
