@@ -1,30 +1,22 @@
 import time
 
 import numpy as np
-
-from robust_smc.data import ReversibleReaction
-from robust_smc.nonlinearmhe import NonlinearMhe
-from robust_smc.ukf import UKF
-from robust_smc.robustnonlinearmhe import RobustifiedNonlinearMhe
-from robust_smc.sampler import LinearGaussianBPF
-
+from sklearn.metrics import mean_squared_error
 from tqdm import trange
 
-from sklearn.metrics import mean_squared_error, median_absolute_error
 from experiment_utilities import pickle_save
+from robust_smc.data import ReversibleReaction
+from robust_smc.nonlinearmhe import NonlinearMhe
+from robust_smc.robustnonlinearmhe import RobustifiedNonlinearMhe
+from robust_smc.ukf import UKF
 
 # Experiment Settings
 SIMULATOR_SEED = 1992
 RNG_SEED = 24
 NUM_RUNS = 40
-BETA = [1e-4, 2e-4]
-# BETA = [1e-3, 1e-2]
-CONTAMINATION = [0, 0.05, 0.1, 0.15, 0.2, 0.25]
-# CONTAMINATION = [0.25]
-# Sampler Settings
 NUM_LATENT = 2
 NUM_SAMPLES = 1000
-NOISE_STD = np.sqrt(0.02)
+NOISE_STD = 0.1
 FINAL_TIME = 10
 TIME_STEP = 0.1
 
@@ -41,19 +33,6 @@ def experiment_step(simulator):
 
     # BPF sampler
     prior_std = np.array([1, 1])
-    # X_init = np.array([[0.1, 4.5]]) + prior_std[None, :] * RNG.randn(NUM_SAMPLES, NUM_LATENT)
-    # X_init = X_init.squeeze()
-    # vanilla_bpf = LinearGaussianBPF(
-    #     data=Y,
-    #     transition_matrix=simulator.transition_matrix,
-    #     observation_model=simulator.observation_model,
-    #     transition_cov=transition_cov,
-    #     observation_cov=observation_cov,
-    #     X_init=X_init,
-    #     num_samples=NUM_SAMPLES,
-    #     seed=seed
-    # )
-    # vanilla_bpf.sample()
 
     # UKF
     ukf = UKF(
@@ -144,17 +123,6 @@ def compute_mse_and_coverage(simulator, sampler):
             lower = simulator.X[:, var] >= mean - 1.64 * std
             coverage = np.sum(upper * lower) / simulator.X.shape[0]
             scores.append([mse, coverage])
-    else:
-        trajectories = np.stack(sampler.X_trajectories)
-        mean = trajectories.mean(axis=1)
-        quantiles = np.quantile(trajectories, q=[0.05, 0.95], axis=1)
-        scores = []
-        for var in range(NUM_LATENT):
-            mse = mean_squared_error(simulator.X[:, var], mean[:, var])
-            upper = simulator.X[:, var] <= quantiles[1, :, var]
-            lower = simulator.X[:, var] >= quantiles[0, :, var]
-            coverage = np.sum(upper * lower) / simulator.X.shape[0]
-            scores.append([mse, coverage])
     return scores
 
 
@@ -202,8 +170,20 @@ def run2(runs, contamination, simulator=None):
 
 
 if __name__ == '__main__':
-    for contamination in CONTAMINATION:
-        print('CONTAMINATION=', contamination)
-        results = run(NUM_RUNS, contamination)
-        # pickle_save(f'../results/reversible_reaction/impulsive_noise_with_student_t/beta-sweep-contamination-{contamination}.pk', results)
-        pickle_save(f'../results/reversible_reaction/impulsive_noise_with_student_t/original/beta-sweep-contamination-{contamination}.pk', results)
+    mode = 2
+    if mode == 1:
+        CONTAMINATION = [0, 0.05, 0.1, 0.15, 0.2]
+        BETA = [1e-4, 2e-4]
+        for contamination in CONTAMINATION:
+            print('CONTAMINATION=', contamination)
+            results = run(NUM_RUNS, contamination)
+            pickle_save(
+                f'../results/reversible_reaction/error_{contamination}.pk',
+                results)
+    elif mode == 2:
+        contamination = 0.2
+        BETA = [1e-4]
+        results = run2(NUM_RUNS, contamination)
+        pickle_save(
+            f'../results/reversible_reaction/original_{contamination}.pk',
+            results)

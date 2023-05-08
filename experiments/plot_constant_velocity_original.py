@@ -1,8 +1,8 @@
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
@@ -11,19 +11,12 @@ BETA = [0.0001]
 font = 25
 lfont = 15
 
-# plt.rcParams.update({
-#     "text.usetex": True,
-#     "font.family": "DeJavu Serif",
-#     "font.sans-serif": ["Helvetica"]})
-# plt.rcParams.update({
-#     "text.usetex": True,
-#     "font.family": "serif"})
 matplotlib.rcParams['font.family'] = ['serif']
 
 palette = sns.color_palette("tab10", len(BETA) + 2)
 
 kf_error, mhe_error, robust_mhes_error = np.load(
-    '../results/constant-velocity/impulsive_noise/original_data/beta-sweep-contamination-0.2.pk', allow_pickle=True)
+    '../results/constant_velocity/original_0.2.pk', allow_pickle=True)
 time_length = int(kf_error.shape[1])
 
 pd0_list, pd1_list, pd2_list, pd3_list = [], [], [], []
@@ -53,10 +46,11 @@ pd_error0 = pd_error0.reset_index(drop=True)  # Apply reset_index function, drop
 pd_error1 = pd_error1.reset_index(drop=True)  # Apply reset_index function, drop=False时, 保留旧的索引为index列
 pd_error2 = pd_error2.reset_index(drop=True)  # Apply reset_index function, drop=False时, 保留旧的索引为index列
 pd_error3 = pd_error3.reset_index(drop=True)  # Apply reset_index function, drop=False时, 保留旧的索引为index列
-f = 5
-if f == 1 or f ==5:
+f = 4
+axes_pos = [0.2, 0.2, 0.6, 0.6]
+if f == 1 or f == 5:
     f1 = plt.figure(1)
-    ax1 = f1.add_axes([0.2, 0.2, 0.6, 0.6])
+    ax1 = f1.add_axes(axes_pos)
     g1 = sns.lineplot(x='Step', y="Error", hue="Algorithm", style="Algorithm", data=pd_error0,
                       linewidth=1, palette=palette, dashes=False)
     ax1.set_ylabel('Error', fontsize=font)
@@ -84,10 +78,11 @@ if f == 1 or f ==5:
     mark_inset(ax1, ax_in1, loc1=3, loc2=1, fc="none", ec='r', lw=2, ls='dotted', alpha=0.8)
     mark_inset(ax1, ax_in1, loc1=4, loc2=2, fc="none", ec='r', lw=2, ls='dotted', alpha=0.8)
 
-    plt.savefig("../figures/constant-velocity/impulsive_noise/original/1.pdf")
-if f == 2 or f ==5:
+    plt.savefig("../figures/constant_velocity/original_1.pdf")
+
+if f == 2 or f == 5:
     f2 = plt.figure(2)
-    ax2 = f2.add_axes([0.2, 0.2, 0.6, 0.6])
+    ax2 = f2.add_axes(axes_pos)
     g2 = sns.lineplot(x='Step', y="Error", hue="Algorithm", style="Algorithm", data=pd_error1,
                       linewidth=1, palette=palette, dashes=False
                       )
@@ -116,11 +111,11 @@ if f == 2 or f ==5:
     mark_inset(ax2, ax_in2, loc1=3, loc2=1, fc="none", ec='r', lw=2, ls='dotted', alpha=0.8)
     mark_inset(ax2, ax_in2, loc1=4, loc2=2, fc="none", ec='r', lw=2, ls='dotted', alpha=0.8)
 
-    plt.savefig("../figures/constant-velocity/impulsive_noise/original/2.pdf")
+    plt.savefig("../figures/constant_velocity/original_2.pdf")
 
-if f == 3 or f ==5:
+if f == 3 or f == 5:
     f3 = plt.figure(3)
-    ax3 = f3.add_axes([0.2, 0.2, 0.6, 0.6])
+    ax3 = f3.add_axes(axes_pos)
     g3 = sns.lineplot(x='Step', y="Error", hue="Algorithm", style="Algorithm", data=pd_error2,
                       linewidth=1, palette=palette, dashes=False
                       )
@@ -149,11 +144,11 @@ if f == 3 or f ==5:
     mark_inset(ax3, ax_in3, loc1=3, loc2=1, fc="none", ec='r', lw=2, ls='dotted', alpha=0.8)
     mark_inset(ax3, ax_in3, loc1=4, loc2=2, fc="none", ec='r', lw=2, ls='dotted', alpha=0.8)
 
-    plt.savefig("../figures/constant-velocity/impulsive_noise/original/3.pdf")
+    plt.savefig("../figures/constant_velocity/original_3.pdf")
 
-if f == 4 or f ==5:
+if f == 4 or f == 5:
     f4 = plt.figure(4)
-    ax4 = f4.add_axes([0.2, 0.2, 0.6, 0.6])
+    ax4 = f4.add_axes(axes_pos)
     g4 = sns.lineplot(x='Step', y="Error", hue="Algorithm", style="Algorithm", data=pd_error3,
                       linewidth=1, palette=palette, dashes=False)
     ax4.set_ylabel('Error', fontsize=font)
@@ -164,7 +159,7 @@ if f == 4 or f ==5:
     ax4.set_xticks(40 * np.arange(6))
     ax4.set_xticklabels(('0', '40', '80', '120', '160', '200'), fontsize=font)
     handles, labels = ax4.get_legend_handles_labels()
-    ax4.legend(handles=handles, labels=['KF', 'MHE', r'$\beta$-MHE'], fontsize=lfont, bbox_to_anchor=(0.06, 0.4))
+    ax4.legend(handles=handles, labels=['KF', 'MHE', r'$\beta$-MHE'], fontsize=lfont, bbox_to_anchor=(0.05, 0.4))
     plt.yticks(fontsize=font)
     plt.xticks(fontsize=font)
 
@@ -181,4 +176,4 @@ if f == 4 or f ==5:
     mark_inset(ax4, ax_in4, loc1=3, loc2=1, fc="none", ec='r', lw=2, ls='dotted', alpha=0.8)
     mark_inset(ax4, ax_in4, loc1=4, loc2=2, fc="none", ec='r', lw=2, ls='dotted', alpha=0.8)
 
-    plt.savefig("../figures/constant-velocity/impulsive_noise/original/4.pdf")
+    plt.savefig("../figures/constant_velocity/original_4.pdf")

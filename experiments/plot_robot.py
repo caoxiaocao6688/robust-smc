@@ -1,24 +1,36 @@
-from cycler import cycler
-
-import numpy as np
-from scipy.stats import mode
-
 import matplotlib.pyplot as plt
-from matplotlib import cm, rc, patches, lines
-import matplotlib
+import numpy as np
+from cycler import cycler
+from matplotlib import cm, rc, patches
 
-from robust_smc.data import ConstantVelocityModel
 from experiment_utilities import pickle_load
 
 # matplotlib Global Settings
 palette = cycler(color=cm.Set1.colors)
 rc('axes', prop_cycle=palette)
-matplotlib.rcParams['font.family'] = ['serif']
+plt.rcParams["font.family"] = "serif"
+BETA = [1e-3, 1e-2, 0.05, 0.1, 0.2]
+CONTAMINATION = [0.01]
+num_betas_to_plot = len(BETA)
 
-# BETA = [r'$10^{-5}$', r'$2 \times 10^{-5}$', r'$4 \times 10^{-5}$', r'$6 \times 10^{-5}$', r'$8 \times 10^{-5}$',
-#         r'$10^{-4}$', r'$2 \times 10^{-4}$']
-BETA = ['0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5']
-CONTAMINATION = [0.2]
+def format_beta(beta_values):
+    formatted_betas = []
+    for beta in beta_values:
+        if beta < 1e-3:
+            exponent = int(np.floor(np.log10(beta)))
+            coefficient = beta / (10 ** exponent)
+            if coefficient == 1:
+                formatted_beta = r"$10^{{{}}}$".format(exponent)
+            else:
+                formatted_beta = f"{coefficient:g}" + r"$\times10^{{{}}}$".format(exponent)
+        else:
+            formatted_beta = str(beta)
+        formatted_betas.append(formatted_beta)
+    return formatted_betas
+
+
+BETA = format_beta(BETA)
+
 LABELS = ['UKF', 'MHE'] + [r'$\beta$ = {}'.format(b) for b in BETA]
 TITLES = [
     'Displacement in $x$ direction',
@@ -29,11 +41,11 @@ TITLES = [
 
 SIMULATOR_SEED = 1400
 NUM_LATENT = 3
+fontsize = 30
 
 
 def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
     fig = plt.figure(figsize=figsize, dpi=300)
-
     for metric in ['mse']:
         if metric == 'mse':
             metric_idx = 0
@@ -54,12 +66,13 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
 
         plt.yscale(scale)
 
-        mean_data = np.zeros(2 + len(BETA), )
+        mean_data = np.zeros(2 + num_betas_to_plot, )
         mean_data[0] = kalman_data.mean(axis=0)
         mean_data[1] = mhe_data.mean(axis=0)
-        mean_data[2:] = robust_mhe_data.mean(axis=0)
+        mean_data[2:] = robust_mhe_data[:, :num_betas_to_plot].mean(axis=0)
 
-        plt.plot(np.arange(1, len(BETA) + 3), mean_data, color='k', lw=2, ls='dashed', marker='s', markersize=10,
+        plt.plot(np.arange(1, num_betas_to_plot + 3), mean_data, color='k', lw=2, ls='dashed', marker='s',
+                 markersize=10,
                  zorder=2)
 
         kalman_plot = plt.boxplot(kalman_data, positions=[1], sym='x',
@@ -67,7 +80,7 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
         mhe_plot = plt.boxplot(mhe_data, positions=[2], sym='x',
                                patch_artist=True, widths=0.5, showfliers=False, zorder=1)
 
-        robust_mhe_plot = plt.boxplot(robust_mhe_data, positions=range(3, len(BETA) + 3),
+        robust_mhe_plot = plt.boxplot(robust_mhe_data[:, :num_betas_to_plot], positions=range(3, num_betas_to_plot + 3),
                                       sym='x', patch_artist=True, widths=0.5, showfliers=False, zorder=1)
 
         kalman_plot['boxes'][0].set_facecolor('C1')
@@ -87,27 +100,21 @@ def aggregate_box_plot(contamination, results_file, figsize, save_path=None):
             kalman_plot[element][0].set_color('black')
             mhe_plot[element][0].set_color('black')
             [box.set_color('black') for box in robust_mhe_plot[element]]
-        # plt.ylim(5, 30)
-        plt.ylabel(ylabel, fontsize=30)
-        plt.yticks(fontsize=30)
-        plt.xticks(ticks=range(1, len(BETA) + 3),
-                   labels=['UKF', 'MHE'] + BETA, fontsize=30,
+        plt.ylabel(ylabel, fontsize=fontsize)
+        plt.yticks(fontsize=fontsize)
+        plt.xticks(ticks=range(1, num_betas_to_plot + 3),
+                   labels=['UKF', 'MHE'] + BETA[:num_betas_to_plot], fontsize=fontsize,
                    rotation=-30)
         plt.grid(axis='y', alpha=0.2, c='k')
 
         colors = ['C1', 'C2', 'C3']
         labels = ['UKF', 'MHE', r'$\beta$-MHE']
         plot_patches = [patches.Patch(color=c, label=l) for c, l in zip(colors, labels)]
-        # plot_patches = plot_patches + [lines.Line2D([0], [0], color='gold', ls='-.', label='Predictive Selection')]
-
-        # plt.legend(handles=plot_patches, loc='lower center',
-        #              frameon=False, bbox_to_anchor=(0.5, -0.8), ncol=2)
         leg = plt.legend(handles=plot_patches, loc='lower center',
-                         frameon=False, bbox_to_anchor=(0.5, -0.42), ncol=3, fontsize=36)
+                         frameon=False, bbox_to_anchor=(0.5, -0.41), ncol=3, fontsize=fontsize)
         for lh in leg.legendHandles:
             lh.set_alpha(0.5)
-        plt.xlabel(r'$\beta$', fontsize=30)
-
+        plt.xlabel(r'$\beta$', fontsize=fontsize)
     if save_path:
         plt.savefig(save_path, bbox_inches='tight')
 
@@ -117,7 +124,7 @@ if __name__ == '__main__':
         title = str(contamination).replace('.', '_')
         aggregate_box_plot(
             contamination=contamination,
-            results_file=f'../results/robot_estimation/beta-sweep-contamination-{contamination}.pk',
+            results_file=f'../results/robot_estimation/error_{contamination}.pk',
             figsize=(16, 9),
-            save_path=f'C:/Users/15291/beta-mhe/figures/robot_estimation/robot-{contamination}.pdf'
+            save_path=f'C:/Users/15291/beta-mhe/figures/robot_estimation/robot_{contamination}.pdf'
         )

@@ -62,26 +62,3 @@ class Kalman:
         self.filter_means = self.filter_means[1:]
         self.filter_covs = self.filter_covs[1:]
 
-    def smooth(self):
-        """
-        Run Rauch–Tung–Striebel
-        :return:
-        """
-        self.smoother_means = [self.filter_means[-1].copy()]
-        self.smoother_covs = [self.filter_covs[-1].copy()]
-
-        for t in range(len(self.filter_means) - 1):
-            m_f = self.filter_means[- (2 + t)]
-            P_f = self.filter_covs[- (2 + t)]
-            m_bar = self.transition_matrix @ m_f
-            P_bar = self.transition_matrix @ P_f @ self.transition_matrix.T + self.transition_cov
-            G = P_f @ self.transition_matrix.T @ np.linalg.inv(P_bar)
-            m = m_f + G @ (self.smoother_means[-1] - m_bar)
-            P = P_f + G @ (self.smoother_covs[-1] - P_bar) @ G.T
-            self.smoother_means.append(m)
-            self.smoother_covs.append(P)
-
-        self.smoother_means.reverse()
-        self.smoother_covs.reverse()
-
-

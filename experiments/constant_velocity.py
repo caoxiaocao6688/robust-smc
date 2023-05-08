@@ -1,26 +1,17 @@
-import time
-
 import numpy as np
+from sklearn.metrics import mean_squared_error
+from tqdm import trange
 
+from experiment_utilities import pickle_save
 from robust_smc.data import ConstantVelocityModel
 from robust_smc.kalman import Kalman
 from robust_smc.mhe import Mhe
 from robust_smc.robustmhe import RobustifiedMhe
-# from robust_smc.sampler import LinearGaussianBPF, RobustifiedLinearGaussianBPF
-
-from tqdm import trange
-
-from numpy.linalg import cholesky
-from sklearn.metrics import mean_squared_error
-
-from experiment_utilities import pickle_save
 
 # Experiment Settings
 SIMULATOR_SEED = 1400
 RNG_SEED = 1218
 NUM_RUNS = 100
-# BETA = [0.00001, 0.00002, 0.00004, 0.00006, 0.00008, 0.0001, 0.0002]
-BETA = [0.0001]
 
 CONTAMINATION = [0.2] # Sampler Settings
 NUM_LATENT = 4
@@ -80,43 +71,6 @@ def experiment_step(simulator):
         robust_mhe.filter()
         # print('ROBUST MHE time', (time.time() - a) / 1000)
         robust_mhes.append(robust_mhe)
-
-    # # BPF Sampler
-    # X_init = simulator.initial_state[None, ...] + cholesky(simulator.initial_cov) @ RNG.randn(NUM_SAMPLES, NUM_LATENT,
-    #                                                                                           1)
-    # X_init = X_init.squeeze()
-    #
-    # seed = RNG.randint(0, 1000000)
-    #
-    # vanilla_bpf = LinearGaussianBPF(
-    #     data=Y,
-    #     transition_matrix=simulator.transition_matrix,
-    #     observation_model=lambda x: (simulator.observation_matrix @ x[:, :, None]).squeeze(),
-    #     transition_cov=simulator.process_cov,
-    #     observation_cov=np.diag(simulator.observation_cov),
-    #     X_init=X_init,
-    #     num_samples=NUM_SAMPLES,
-    #     seed=seed
-    # )
-    # vanilla_bpf.sample()
-
-    # # Robust Sampler
-    # robust_bpfs = []
-    # for b in BETA:
-    #     robust_bpf = RobustifiedLinearGaussianBPF(
-    #         data=Y,
-    #         beta=b,
-    #         transition_matrix=simulator.transition_matrix,
-    #         observation_model=lambda x: (simulator.observation_matrix @ x[:, :, None]).squeeze(),
-    #         transition_cov=simulator.process_cov,
-    #         observation_cov=np.diag(simulator.observation_cov),
-    #         X_init=X_init,
-    #         num_samples=NUM_SAMPLES,
-    #         seed=seed
-    #     )
-    #     robust_bpf.sample()
-    #     robust_bpfs.append(robust_bpf)
-
     return simulator, kalman, mhe, robust_mhes
 
 
@@ -163,17 +117,6 @@ def compute_mse_and_coverage(simulator, sampler):
             lower = simulator.X[:, var] >= mean - 1.64 * std
             coverage = np.sum(upper * lower) / simulator.X.shape[0]
             scores.append([mse, coverage])
-    # else:
-    #     trajectories = np.stack(sampler.X_trajectories)
-    #     mean = trajectories.mean(axis=1)
-    #     quantiles = np.quantile(trajectories, q=[0.05, 0.95], axis=1)
-    #     scores = []
-    #     for var in range(NUM_LATENT):
-    #         mse = mean_squared_error(simulator.X[:, var], mean[:, var])
-    #         upper = simulator.X[:, var] <= quantiles[1, :, var]
-    #         lower = simulator.X[:, var] >= quantiles[0, :, var]
-    #         coverage = np.sum(upper * lower) / simulator.X.shape[0]
-    #         scores.append([mse, coverage])
     return scores
 
 
@@ -192,7 +135,6 @@ def run(runs, contamination):
         simulator, kalman, mhe, robust_mhes = experiment_step(simulator)
         kalman_data.append(compute_mse_and_coverage(simulator, kalman))
         mhe_data.append(compute_mse_and_coverage(simulator, mhe))
-        # vanilla_bpf_data.append(compute_mse_and_coverage(simulator, vanilla_bpf))
         robust_mhe_data.append([compute_mse_and_coverage(simulator, robust_mhe) for robust_mhe in robust_mhes])
 
     return np.array(kalman_data), np.array(mhe_data), np.array(robust_mhe_data)
@@ -221,11 +163,19 @@ def run2(runs, contamination, simulator=None):
 
 
 if __name__ == '__main__':
+    mode = 2
     for contamination in CONTAMINATION:
-        results = run2(NUM_RUNS, contamination)
-        pickle_save(
-            f'../results/constant-velocity/impulsive_noise/original_data/beta-sweep-contamination-{contamination}.pk',
-            results)  # TODO
-        # pickle_save(
-        #     f'../results/constant-velocity/impulsive_noise/beta-sweep-contamination-{contamination}.pk',
-        #     results)
+        if mode == 1:
+            BETA = [0.00001, 0.00002, 0.00004, 0.00006, 0.00008, 0.0001, 0.0002]
+            results = run(NUM_RUNS, contamination)
+            pickle_save(
+                f'../results/constant_velocity/error_{contamination}.pk',
+                results)
+        elif mode == 2:
+            BETA = [0.0001]
+            results = run2(NUM_RUNS, contamination)
+            pickle_save(
+                f'../results/constant_velocity/original_{contamination}.pk',
+                results)
+        else:
+            raise ValueError

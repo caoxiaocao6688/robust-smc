@@ -1,7 +1,7 @@
 import time
 
 import numpy as np
-
+import random
 from robust_smc.nonlinearmhe_robot import NonlinearMheRobot
 from robust_smc.ukf_robot import UKFRobot
 from robust_smc.robustnonlinearmhe_robot import RobustifiedNonlinearMheRobot
@@ -11,12 +11,11 @@ from tqdm import trange
 from sklearn.metrics import mean_squared_error
 from experiment_utilities import pickle_save
 
+import matplotlib.pyplot as plt
+import matplotlib as mpl
 # Experiment Settings
 SIMULATOR_SEED = 1992
 RNG_SEED = 24
-# BETA = [1e-3, 1e-4, 1e-5]
-BETA = [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
-CONTAMINATION = [0.2]
 # Sampler Settings
 NUM_LATENT = 3
 NUM_SAMPLES = 1000
@@ -50,7 +49,9 @@ class Robot:
             # self.Y_list.append(np.array(obs[i])[:, [0, 3]])
             self.Y_list.append(np.array(obs[i]))
             self.U_list.append(np.array(action[i]))
-        self.m_0 = np.mean(self.X_list, axis=0)[0]
+        X_arr = np.array(self.X_list)
+        self.zero_states = X_arr[:, 0, :]
+        self.m_0 = np.mean(X_arr[:, 0, :], axis=0)
         self.rng = np.random.RandomState(self.seed)
 
     def noise_model(self, Y):
@@ -63,35 +64,23 @@ class Robot:
     # def renoise(self, run):
     #     return self.Y_list[run] + self.noise_model(self.Y_list[run])  # TODO
 
-    def renoise(self, run):
+    def get_y(self, run):
+        return self.Y_list[run]
+
+    def renoise_(self, run):
         Y = self.Y_list[run]
         p_u = self.rng.rand(Y.shape[0])
         loc = (p_u <= self.contamination)
-        Y[loc, 0:3] = 20
+        random_number = random.randint(0, 2)
+        Y[loc, random_number] = 20
         return Y
 
 
 def experiment_step(simulator, run):
-    Y = simulator.renoise(run)
-
+    Y = simulator.renoise_(run)
     transition_cov = np.diag(simulator.process_std ** 2)
     observation_cov = np.diag(simulator.observation_std ** 2)
-
-    # BPF sampler
-    prior_std = np.array([1, 1, 1])
-    # X_init = np.array([[0.1, 4.5]]) + prior_std[None, :] * RNG.randn(NUM_SAMPLES, NUM_LATENT)
-    # X_init = X_init.squeeze()
-    # vanilla_bpf = LinearGaussi  anBPF(
-    #     data=Y,
-    #     transition_matrix=simulator.transition_matrix,
-    #     observation_model=simulator.observation_model,
-    #     transition_cov=transition_cov,
-    #     observation_cov=observation_cov,
-    #     X_init=X_init,
-    #     num_samples=NUM_SAMPLES,
-    #     seed=seed
-    # )
-    # vanilla_bpf.sample()
+    prior_std = np.array([0.0001, 0.0001, 0.0001])
 
     # UKF
     ukf = UKFRobot(
@@ -99,10 +88,13 @@ def experiment_step(simulator, run):
         transition_matrix=simulator.transition_matrix,
         transition_cov=transition_cov,
         observation_cov=observation_cov,
-        m_0=simulator.m_0,
+        m_0=simulator.zero_states[run, :],
         P_0=np.diag(prior_std) ** 2,
-        U=simulator.U_list[run]
+        U=simulator.U_list[run],
+        X=simulator.X_list[run]
     )
+    # ukf.compare_state_sequences()
+    # ukf.compare_observations()
     time_a = time.time()
     ukf.filter()
     print('UKF_time', time.time() - time_a)
@@ -113,7 +105,7 @@ def experiment_step(simulator, run):
         transition_matrix=simulator.transition_matrix,
         transition_cov=transition_cov,
         observation_cov=observation_cov,
-        m_0=simulator.m_0,
+        m_0=simulator.zero_states[run, :],
         P_0=np.diag(prior_std) ** 2,
         U=simulator.U_list[run]
     )
@@ -130,7 +122,7 @@ def experiment_step(simulator, run):
             transition_matrix=simulator.transition_matrix,
             transition_cov=transition_cov,
             observation_cov=observation_cov,
-            m_0=simulator.m_0,
+            m_0=simulator.zero_states[run, :],
             P_0=np.diag(prior_std) ** 2,
             U=simulator.U_list[run]
         )
@@ -206,7 +198,6 @@ def run(contamination):
         filepath_list=['../data_processing/20230216-140452.npz',
                        '../data_processing/20230216-141321.npz', '../data_processing/20230216-141616.npz',
                        '../data_processing/20230216-142042.npz'],
-        # filepath_list=['../data_processing/20230216-140452.npz'],
         min_len=101
     )
     ukf_data, mhe_data, robust_mhe_data = [], [], []
@@ -215,7 +206,10 @@ def run(contamination):
         ukf_data.append(compute_mse_and_coverage(simulator, ukf, run))
         mhe_data.append(compute_mse_and_coverage(simulator, mhe, run))
         robust_mhe_data.append([compute_mse_and_coverage(simulator, robust_mhe, run) for robust_mhe in robust_mhes])
-    return np.array(ukf_data), np.array(mhe_data), np.array(robust_mhe_data)
+    mhe_np, robust_mhe_np = np.array(mhe_data), np.array(robust_mhe_data)
+    mhe_np = robust_mhe_np[:, 0, :, :]
+    robust_mhe_np = np.delete(robust_mhe_np, 0, axis=1)
+    return np.array(ukf_data), mhe_np, robust_mhe_np
 
 
 def run2(contamination):
@@ -225,26 +219,75 @@ def run2(contamination):
         filepath_list=['../data_processing/20230216-140452.npz',
                        '../data_processing/20230216-141321.npz', '../data_processing/20230216-141616.npz',
                        '../data_processing/20230216-142042.npz'],
-        # filepath_list=['../data_processing/20230216-140452.npz'],
         min_len=101
     )
     robust_mhe_error_list, ukf_error_list, mhe_error_list = [], [], []
     for run in trange(simulator.NUM_RUNS):
         simulator, ukf, mhe, robust_mhes = experiment_step(simulator, run)
-        ukf_error = simulator.X - np.squeeze(np.array(ukf.filter_means), axis=2)
-        mhe_error = simulator.X - np.squeeze(np.array(mhe.filter_means), axis=2)
-        robust_mhes_error = simulator.X - [np.squeeze(np.array(robust_mhe.filter_means), axis=2) for robust_mhe in
-                                           robust_mhes]
+        ukf_error = simulator.X_list[run] - np.squeeze(np.array(ukf.filter_means), axis=2)
+        mhe_error = simulator.X_list[run] - np.squeeze(np.array(mhe.filter_means), axis=2)
+        robust_mhes_error = simulator.X_list[run] - [np.squeeze(np.array(robust_mhe.filter_means), axis=2) for
+                                                     robust_mhe in
+                                                     robust_mhes]
         ukf_error_list.append(ukf_error)
         robust_mhe_error_list.append(robust_mhes_error)
         mhe_error_list.append(mhe_error)
-    return np.array(ukf_error_list), np.array(mhe_error_list), np.array(robust_mhe_error_list)
+    mhe_np, robust_mhe_np = np.array(mhe_error_list), np.array(robust_mhe_error_list)
+    mhe_np = robust_mhe_np[:, 0, :, :]
+    robust_mhe_np = np.delete(robust_mhe_np, 0, axis=1)
+    return np.array(ukf_error_list), mhe_np, robust_mhe_np
+
+
+def run3(contamination):
+    simulator = Robot(
+        contamination=contamination,
+        seed=SIMULATOR_SEED,
+        filepath_list=['../data_processing/20230216-140452.npz',
+                       '../data_processing/20230216-141321.npz', '../data_processing/20230216-141616.npz',
+                       '../data_processing/20230216-142042.npz'],
+        min_len=101
+    )
+    robust_mhe_list, ukf_list, mhe_list = [], [], []
+    for run in trange(simulator.NUM_RUNS):
+        simulator, ukf, mhe, robust_mhes = experiment_step(simulator, run)
+        ukf_list.append(np.squeeze(np.array(ukf.filter_means), axis=2))
+        mhe_list.append(np.squeeze(np.array(mhe.filter_means), axis=2))
+        robust_mhe_list.append([np.squeeze(np.array(robust_mhe.filter_means), axis=2) for
+                                robust_mhe in
+                                robust_mhes])
+    mhe_np, robust_mhe_np = np.array(mhe_list), np.array(robust_mhe_list)
+    mhe_np = robust_mhe_np[:, 0, :, :]
+    robust_mhe_np = np.delete(robust_mhe_np, 0, axis=1)
+    robust_mhe_np = np.squeeze(robust_mhe_np)
+    return np.array(simulator.X_list), np.array(ukf_list), mhe_np, robust_mhe_np
 
 
 if __name__ == '__main__':
-    for contamination in CONTAMINATION:
-        print('CONTAMINATION=', contamination)
-        results = run(contamination)
-        pickle_save(
-            f'../results/robot_estimation/beta-sweep-contamination-{contamination}.pk',
-            results)
+    mode = 3
+    if mode == 1:
+        BETA = [1e-5, 1e-3, 1e-2, 0.05, 0.1, 0.2]
+        CONTAMINATION = [0.01]
+        for contamination in CONTAMINATION:
+            print('CONTAMINATION=', contamination)
+            results = run(contamination)
+            pickle_save(
+                f'../results/robot_estimation/error_{contamination}.pk',
+                results)
+    elif mode == 2:
+        BETA = [1e-5, 0.1]
+        CONTAMINATION = [0.01]
+        for contamination in CONTAMINATION:
+            print('CONTAMINATION=', contamination)
+            results = run2(contamination)
+            pickle_save(
+                f'../results/robot_estimation/original_{contamination}.pk',
+                results)
+    elif mode == 3:
+        BETA = [1e-5, 0.1]
+        CONTAMINATION = [0.01]
+        for contamination in CONTAMINATION:
+            print('CONTAMINATION=', contamination)
+            results = run3(contamination)
+            pickle_save(
+                f'../results/robot_estimation/traj_{contamination}.pk',
+                results)

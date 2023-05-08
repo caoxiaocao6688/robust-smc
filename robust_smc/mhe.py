@@ -1,5 +1,5 @@
-import numpy as np
 import casadi as ca
+import numpy as np
 
 
 class Mhe:

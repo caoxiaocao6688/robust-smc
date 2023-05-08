@@ -1,7 +1,7 @@
-import numpy as np
 import casadi as ca
-from filterpy.kalman import UnscentedKalmanFilter, JulierSigmaPoints
+import numpy as np
 import scipy.linalg as la
+from filterpy.kalman import UnscentedKalmanFilter, JulierSigmaPoints
 
 
 class RobustifiedNonlinearMheRobot:
@@ -23,46 +23,40 @@ class RobustifiedNonlinearMheRobot:
         self.U = U
 
     def fx(self, x, dt=0):
-        x0 = x[0] + self.time_step * self.u[0] * np.cos(x[2])
-        x1 = x[1] + self.time_step * self.u[0] * np.sin(x[2])
-        x2 = x[2] + self.time_step * self.u[1]
+        x0 = x[0] + self.time_step * self.u[0] * np.cos(x[2]) - 0.0001675046729610055
+        x1 = x[1] + self.time_step * self.u[0] * np.sin(x[2]) - 0.0001963914687308423
+        x2 = x[2] + self.time_step * self.u[1] + 0.0005640178926637775
         return np.array([x0, x1, x2])
 
     def f_ca(self, x, u):
-        x0 = x[0] + self.time_step * u[0] * np.cos(x[2])
-        x1 = x[1] + self.time_step * u[0] * np.sin(x[2])
-        x2 = x[2] + self.time_step * u[1]
+        x0 = x[0] + self.time_step * u[0] * np.cos(x[2]) - 0.0002
+        x1 = x[1] + self.time_step * u[0] * np.sin(x[2]) - 0.0002
+        x2 = x[2] + self.time_step * u[1] + 0.0006
         return ca.vertcat(x0, x1, x2)
 
     def hx(self, x):
-        obstacle0 = [1.052, -2.695]
-        obstacle1 = [4.072, -1.752]
-        obstacle2 = [6.028, - 3.324]
-        l = 0.3296
-
-        y0 = la.norm(np.array([obstacle0[0] - x[0] - l * np.cos(x[2]), obstacle0[1] - x[1] - l * np.sin(x[2])]), 2)
-        y1 = la.norm(np.array([obstacle1[0] - x[0] - l * np.cos(x[2]), obstacle1[1] - x[1] - l * np.sin(x[2])]), 2)
-        y2 = la.norm(np.array([obstacle2[0] - x[0] - l * np.cos(x[2]), obstacle2[1] - x[1] - l * np.sin(x[2])]), 2)
-        y3 = np.arctan((obstacle0[1] - x[1] - l * np.sin(x[2])) / (obstacle0[0] - x[0] - l * np.cos(x[2]))) - x[2]
-        y4 = np.arctan((obstacle1[1] - x[1] - l * np.sin(x[2])) / (obstacle1[0] - x[0] - l * np.cos(x[2]))) - x[2]
-        y5 = np.arctan((obstacle2[1] - x[1] - l * np.sin(x[2])) / (obstacle2[0] - x[0] - l * np.cos(x[2]))) - x[2]
-        return np.array([y0, y1, y2, y3, y4, y5])
-        # return np.array([y0, y3])
+        px, py, theta = x
+        obstacle_info = [[1.052, -2.695], [4.072, -1.752], [6.028, -3.324]]
+        obstacle = np.array(obstacle_info)
+        der_x_robot = 0.329578
+        rot = np.array([[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]])
+        obstacle_obs = (obstacle - x[:2]) @ rot.T - np.array([der_x_robot, 0])
+        dist = np.linalg.norm(obstacle_obs, axis=1)
+        angle = np.arctan2(obstacle_obs[:, 1], obstacle_obs[:, 0])
+        return np.concatenate([dist, angle]) + np.array([- 0.0312, - 0.0581, - 0.0557, 0.0053, 0.0059, 0.0125])
 
     def h_ca(self, x):
-        obstacle0 = [1.052, -2.695]
-        obstacle1 = [4.072, -1.752]
-        obstacle2 = [6.028, - 3.324]
-        l = 0.3296
-
-        y0 = la.norm(np.array([obstacle0[0] - x[0] - l * np.cos(x[2]), obstacle0[1] - x[1] - l * np.sin(x[2])]), 2)
-        y1 = la.norm(np.array([obstacle1[0] - x[0] - l * np.cos(x[2]), obstacle1[1] - x[1] - l * np.sin(x[2])]), 2)
-        y2 = la.norm(np.array([obstacle2[0] - x[0] - l * np.cos(x[2]), obstacle2[1] - x[1] - l * np.sin(x[2])]), 2)
-        y3 = np.arctan((obstacle0[1] - x[1] - l * np.sin(x[2])) / (obstacle0[0] - x[0] - l * np.cos(x[2]))) - x[2]
-        y4 = np.arctan((obstacle1[1] - x[1] - l * np.sin(x[2])) / (obstacle1[0] - x[0] - l * np.cos(x[2]))) - x[2]
-        y5 = np.arctan((obstacle2[1] - x[1] - l * np.sin(x[2])) / (obstacle2[0] - x[0] - l * np.cos(x[2]))) - x[2]
-        return ca.vertcat(y0, y1, y2, y3, y4, y5)
-        # return ca.vertcat(y0, y3)
+        px, py, theta = x[0], x[1], x[2]
+        obstacle_info = [[1.052, -2.695], [4.072, -1.752], [6.028, -3.324]]
+        obstacle = np.array(obstacle_info)
+        der_x_robot = 0.329578
+        rot = np.array([[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]])
+        temp = ca.repmat(x[:2].T, 3, 1)
+        obstacle_obs = (obstacle - temp) @ rot.T - np.tile(np.array([der_x_robot, 0]), (3, 1))
+        dist = ca.sqrt(ca.diag(ca.mtimes(obstacle_obs, obstacle_obs.T)))
+        angle = np.arctan2(obstacle_obs[:, 1], obstacle_obs[:, 0])
+        return ca.vertcat(dist[0] - 0.0312, dist[1] - 0.0581, dist[2] - 0.0557, angle[0] + 0.0053,
+                          angle[1] + 0.0059, angle[2] + 0.0125)
 
     def filter(self):
         """
@@ -79,12 +73,15 @@ class RobustifiedNonlinearMheRobot:
                                     points=sigmas)
         ukf.x = self.m_0
         ukf.P = self.P_0
+        ukf.Q = self.transition_cov
+        ukf.R = self.observation_cov
 
         for t in range(self.data.shape[0]):
             if t == 0:
                 self.u = np.zeros_like(self.U[t])
             else:
                 self.u = self.U[t - 1]
+            ukf.x = self.filter_means[-1].flatten()
             ukf.predict()
             y = self.data[t]
             if not np.isnan(y).any():
@@ -145,7 +142,8 @@ class RobustifiedNonlinearMheRobot:
         ca_h = ca.Function('h', [ca_x], [ca_RHS])
 
         ca_x_hat = ca_x_hat0
-        ca_cost_fn = 0.5 * (ca_x_hat - ca_x_bar0).T @ ca_P0_inv @ (ca_x_hat - ca_x_bar0) * 1e-8  # cost function
+        scale = 1
+        ca_cost_fn = 0.5 * (ca_x_hat - ca_x_bar0).T @ ca_P0_inv @ (ca_x_hat - ca_x_bar0) * scale # cost function
 
         for k in range(slide_window):
             ca_xi = ca_Xi[:, k]
@@ -154,12 +152,12 @@ class RobustifiedNonlinearMheRobot:
             ca_cost_fn = ca_cost_fn \
                          + 1 / ((self.beta + 1) ** 1.5 * (2 * np.pi) ** (self.y_dim * self.beta / 2) * (
                 la.det(self.observation_cov)) ** (
-                                        self.beta / 2)) * 1e-8 \
+                                        self.beta / 2)) * scale \
                          - (1 / self.beta) * 1 / (
                                      (2 * np.pi) ** (self.beta * self.y_dim / 2) * (la.det(self.observation_cov)) ** (
                                      self.beta / 2)) * ca.exp(
-                -0.5 * self.beta * (ca_y - ca_h(ca_x_hat)).T @ ca_R_inv @ (ca_y - ca_h(ca_x_hat))) * 1e-8 \
-                         + 0.5 * ca_xi.T @ ca_Q_inv @ ca_xi * 1e-8
+                -0.5 * self.beta * (ca_y - ca_h(ca_x_hat)).T @ ca_R_inv @ (ca_y - ca_h(ca_x_hat))) * scale \
+                         + 0.5 * ca_xi.T @ ca_Q_inv @ ca_xi * scale
 
         # 自变量设置
         ca_OPT_variables = ca.vertcat(
